@@ -7,7 +7,7 @@ import { SignIn } from "@/lib/auth";
 import { BrandMark } from "@/components/brand/primitives";
 import { ThemeToggle } from "@/components/shell/page-actions";
 import { Button } from "@/components/ui/button";
-import { SCHOOL_NAME } from "@/lib/school";
+import { useSchoolName } from "@/lib/site-settings";
 import { SignInNotice } from "./sign-in-notice";
 
 /**
@@ -47,6 +47,7 @@ function Body() {
    * what the account may see.
    */
   const role = search.get("role");
+  const schoolName = useSchoolName();
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
@@ -62,7 +63,7 @@ function Body() {
             Welcome back
           </p>
           <p className="max-w-[38ch] text-[13px] leading-relaxed text-on-navy-soft">
-            Sign in to {SCHOOL_NAME} to see your classes, work and fees.
+            Sign in to {schoolName} to see your classes, work and fees.
           </p>
         </div>
       </header>

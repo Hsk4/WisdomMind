@@ -5,6 +5,15 @@ import type { ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Notice } from "@/components/ui/nila";
+import { errorMessage } from "@/lib/api-client";
+
+/**
+ * A thrown error as a sentence. `api-client` already rewrites SQL and stack
+ * text; this is the second line of defence for anything else that throws.
+ */
+function messageOf(error: unknown, fallback: string): string {
+  return errorMessage(error, fallback);
+}
 
 /**
  * Moved client-side: the web calls the API through `lib/api-client`, so a
@@ -51,10 +60,7 @@ export function ActionForm({
           const ok = state == null ? true : (state as { ok: boolean }).ok;
           if (ok && resetOnSuccess) form.reset();
         } catch (error) {
-          setResult({
-            ok: false,
-            message: error instanceof Error ? error.message : "Request failed",
-          });
+          setResult({ ok: false, message: messageOf(error, "Request failed") });
         } finally {
           setPending(false);
         }
@@ -62,7 +68,8 @@ export function ActionForm({
     >
       {children}
       <div className="flex flex-wrap items-center gap-3">
-        <Button type="submit" disabled={pending}>
+        {/* Full width on a phone: the submit is the one thing to hit. */}
+        <Button type="submit" disabled={pending} className="w-full sm:w-auto">
           {pending ? "Working..." : submitLabel}
         </Button>
         {result ? (
@@ -112,7 +119,7 @@ export function ActionButton({
               setMessage(state.message ?? "Failed");
             }
           } catch (error) {
-            setMessage(error instanceof Error ? error.message : "Failed");
+            setMessage(messageOf(error, "Failed"));
           } finally {
             setPending(false);
           }

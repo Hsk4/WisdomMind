@@ -1,4 +1,4 @@
-import { and, desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, isNull, sql } from "drizzle-orm";
 import { db, type Tx } from "@/db";
 import { parentInvites, users } from "@/db/schema";
 import type { Id, ParentInvite, ParentInviteState } from "@/db/types";
@@ -27,6 +27,7 @@ export function toParentInvite(row: InviteRow): ParentInvite {
     acceptedAt: row.acceptedAt,
     attempts: row.attempts,
     lastAttemptAt: row.lastAttemptAt,
+    testRedeemedAt: row.testRedeemedAt,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   };
@@ -105,6 +106,8 @@ export type ParentInviteRow = {
   expiresAt: Date | null;
   createdAt: Date;
   acceptedAt: Date | null;
+  /** Set when the office used its one test use of the code. */
+  testRedeemedAt: Date | null;
 };
 
 /**
@@ -128,6 +131,7 @@ export async function listInvitesWithStudent(
       expiresAt: parentInvites.expiresAt,
       createdAt: parentInvites.createdAt,
       acceptedAt: parentInvites.acceptedAt,
+      testRedeemedAt: parentInvites.testRedeemedAt,
     })
     .from(parentInvites)
     .leftJoin(users, eq(users.id, parentInvites.studentId))
@@ -176,6 +180,25 @@ export async function recordFailedAttempt(
       lastAttemptAt: new Date(),
     })
     .where(eq(parentInvites.id, id));
+}
+
+/**
+ * Claim the office's one test use of a code.
+ *
+ * `WHERE test_redeemed_at IS NULL` makes the claim atomic: two admins clicking
+ * at once cannot both spend it, and the parent's own use is untouched.
+ */
+export async function claimTestUse(
+  id: Id,
+  adminId: Id,
+  conn: Tx | typeof db = db,
+): Promise<boolean> {
+  const claimed = await conn
+    .update(parentInvites)
+    .set({ testRedeemedAt: new Date(), testRedeemedBy: adminId })
+    .where(and(eq(parentInvites.id, id), isNull(parentInvites.testRedeemedAt)))
+    .returning({ id: parentInvites.id });
+  return claimed.length > 0;
 }
 
 export async function acceptInvite(

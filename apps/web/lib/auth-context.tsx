@@ -7,17 +7,15 @@ import {
   useEffect,
   useMemo,
   useState,
-  useSyncExternalStore,
   type ReactNode,
 } from "react";
 import { useRouter } from "next/navigation";
 import type { MeResponse } from "@lms/shared";
-import { api, ApiError, setUnauthorizedHandler } from "./api-client";
+import { api, ApiError, errorMessage, setUnauthorizedHandler } from "./api-client";
 import {
   clearSession,
   readStoredUser,
   readToken,
-  subscribeToSession,
   writeSession,
   type StoredUser,
 } from "./session";
@@ -25,13 +23,13 @@ import {
 /**
  * The one place the app knows who is signed in.
  *
- * Replaces the TanStack query that used to be mounted by every guard: there is
- * exactly one `/me` request per page load, it happens only when a token exists,
- * and its result lives here as plain React state. No cache, no refetch policy,
- * no invalidation — the provider is the state.
+ * There is exactly one `/me` request per page load, it happens only when a
+ * token exists, and its result lives here as plain React state. No cache, no
+ * refetch policy, no invalidation — the provider is the state.
  *
  * Access is decided by the API: `user.home` and `user.role` come from `/me`, and
- * nothing here invents a role from localStorage.
+ * nothing here invents a role from localStorage. The stored profile is only a
+ * first-paint hint, replaced by the API's answer as soon as it lands.
  */
 
 export type AuthState = {
@@ -57,59 +55,57 @@ export type AuthState = {
 
 const AuthContext = createContext<AuthState | null>(null);
 
-/**
- * The last profile the API returned, held for the lifetime of the tab. A
- * remount (navigating after sign-in) adopts it instead of asking `/me` again.
- * It is keyed by token, so a different account can never inherit it.
- */
-let lastProfile: { token: string; me: MeResponse } | null = null;
+/** The stored hint, in the shape `/me` returns, for the first paint. */
+function hintToMe(hint: StoredUser): MeResponse | null {
+  if (!hint?.id || !hint.role) return null;
+  return {
+    id: String(hint.id),
+    name: hint.name ?? "",
+    email: hint.email ?? "",
+    role: hint.role as MeResponse["role"],
+    status: (hint.status ?? "pending") as MeResponse["status"],
+    onboarded: Boolean(hint.onboarded),
+    rejectedAt: null,
+    rejectionReason: null,
+    home: "/",
+    pendingRequests: 0,
+  };
+}
 
+/**
+ * The one place the app knows who is signed in.
+ *
+ * One piece of state: the token and the profile it belongs to. The token is
+ * read from `localStorage` on the first client render, and the profile is
+ * re-read from `/me` whenever the token changes. A profile for a different
+ * token is simply not this session's, so signing out or switching account
+ * never shows stale data.
+ */
 export function AuthProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
 
   /*
-   * The token lives in `localStorage`, which does not exist during the static
-   * export's prerender. Read through `useSyncExternalStore` so the server
-   * snapshot is `null` and the client switches to the real value after
+   * The stored session is read lazily, on the first client render. During the
+   * static export's prerender `localStorage` does not exist, so the server
+   * snapshot is "no session" and the client switches to the real value after
    * hydration — the guards never see a wrong "signed out" on the first paint.
    */
-  const token = useSyncExternalStore(subscribeToSession, readToken, () => null);
-  const signedIn = token !== null;
-
-  /*
-   * `useSyncExternalStore` renders the server snapshot (`null`) once before it
-   * reads `localStorage`. During that render the token is not yet known, so a
-   * guard that trusted it would redirect a signed-in user to /sign-in on every
-   * hard load. The same hook answers "has the client rendered yet": `false`
-   * on the server snapshot, `true` in the browser.
-   */
-  const hydrated = useSyncExternalStore(
-    subscribeToSession,
-    () => true,
-    () => false,
-  );
-
-  const [user, setUser] = useState<MeResponse | null>(null);
+  const [session, setSession] = useState<{
+    token: string | null;
+    me: MeResponse | null;
+  }>(() => {
+    const stored = readToken();
+    return { token: stored, me: stored ? hintToMe(readStoredUser()) : null };
+  });
+  const [ready] = useState(() => typeof window !== "undefined");
   const [error, setError] = useState<string | null>(null);
   // Bumped to force a re-read without changing the token.
   const [refreshTick, setRefreshTick] = useState(0);
 
-  /*
-   * The profile belongs to one token. Keying the stored user by the token it
-   * came from means signing out (or switching account) never shows stale state,
-   * and nothing has to be cleared from an effect body.
-   *
-   * It starts from the profile this tab already fetched, so navigating after
-   * sign-in does not ask `/me` a second time.
-   */
-  const [fetchedFor, setFetchedFor] = useState<{
-    token: string;
-    me: MeResponse;
-  } | null>(() => lastProfile);
-  const current =
-    signedIn && token && fetchedFor?.token === token ? fetchedFor.me : null;
-  const resolvedUser = current ?? user;
-  const loading = Boolean(signedIn && token && !current && !error);
+  const token = session.token;
+  const signedIn = token !== null;
+  const user = session.me;
+  const loading = Boolean(signedIn && !user && !error);
 
   const refresh = useCallback(async () => {
     setRefreshTick((tick) => tick + 1);
@@ -117,22 +113,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signOut = useCallback(() => {
     clearSession();
-    setUser(null);
+    setSession({ token: null, me: null });
     setError(null);
-    setFetchedFor(null);
     router.replace("/sign-in");
   }, [router]);
 
-  // A 401 from any request means the stored token is dead: sign out once.
+  // A 401 from any request means the stored token is dead: sign out once, and
+  // remember why so the sign-in page can explain it.
   useEffect(() => {
-    setUnauthorizedHandler(() => {
-      clearSession();
-      lastProfile = null;
-      setUser(null);
-      setFetchedFor(null);
+    setUnauthorizedHandler((reason) => {
+      clearSession(reason);
+      setSession({ token: null, me: null });
     });
     return () => setUnauthorizedHandler(null);
   }, []);
+
+
 
   /*
    * The single profile read. Runs on mount and whenever the token changes — and
@@ -140,15 +136,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
    * every page load.
    */
   useEffect(() => {
-    if (!signedIn || !token) return;
-
-    /*
-     * `fetchedFor` was seeded from the profile sign-in already loaded, so the
-     * next mount returns here instead of asking again — one `/me` per session,
-     * not one per page.
-     */
-
-    if (fetchedFor?.token === token) return;
+    if (!token) return;
 
     let cancelled = false;
 
@@ -156,9 +144,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .get<MeResponse>("/me")
       .then((me) => {
         if (cancelled) return;
-        lastProfile = { token, me };
-        setFetchedFor({ token, me });
-        setUser(me);
+        setSession({ token, me });
         setError(null);
         // Keep the name/email hint in storage in step with the API.
         writeSession(token, {
@@ -174,17 +160,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (cancelled) return;
         // A 401 already cleared the session above; report anything else.
         if (caught instanceof ApiError && caught.status === 401) return;
-        setError(
-          caught instanceof Error
-            ? caught.message
-            : "Your account could not be loaded",
-        );
+        setError(errorMessage(caught, "Your account could not be loaded"));
       });
 
     return () => {
       cancelled = true;
     };
-  }, [signedIn, token, fetchedFor, refreshTick]);
+  }, [token, refreshTick]);
 
   const completeSignIn = useCallback(
     async (nextToken: string, nextUser: StoredUser) => {
@@ -192,9 +174,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Read the profile before navigating: `home` decides the destination and
       // the guards need it on the very next render.
       const me = await api.get<MeResponse>("/me");
-      lastProfile = { token: nextToken, me };
-      setFetchedFor({ token: nextToken, me });
-      setUser(me);
+      setSession({ token: nextToken, me });
       writeSession(nextToken, {
         id: me.id,
         name: me.name,
@@ -212,29 +192,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     () => ({
       // Only once the client has read the stored session, so a hard load never
       // looks signed out for a tick.
-      ready: hydrated,
+      ready,
       signedIn,
-      user: resolvedUser,
+      user,
       loading,
-      settled:
-        typeof window !== "undefined" &&
-        !loading &&
-        (!signedIn || resolvedUser !== null),
+      settled: ready && !loading && (!signedIn || user !== null),
       error,
       refresh,
       completeSignIn,
       signOut,
     }),
-    [
-      hydrated,
-      signedIn,
-      resolvedUser,
-      loading,
-      error,
-      refresh,
-      completeSignIn,
-      signOut,
-    ],
+    [ready, signedIn, user, loading, error, refresh, completeSignIn, signOut],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

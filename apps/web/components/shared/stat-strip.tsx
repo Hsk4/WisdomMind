@@ -30,7 +30,18 @@ export function StatStrip({
   if (items.length === 0) return null;
 
   return (
-    <dl className={cn("grid gap-3 sm:grid-cols-2 lg:grid-cols-4", className)}>
+    /*
+     * Two-up from the narrowest phone, not one-up. A single column pushed four
+     * summary tiles down the whole first screen, so the search box and filters
+     * below them — the reason someone opened the page — started below the fold.
+     * Two columns keeps every number visible on the first screen.
+     */
+    <dl
+      className={cn(
+        "grid grid-cols-2 gap-3 sm:grid-cols-2 lg:grid-cols-4",
+        className,
+      )}
+    >
       {items.map((item) => {
         const Delta =
           item.delta?.direction === "down" ? ArrowDownRight : ArrowUpRight;
@@ -46,7 +57,7 @@ export function StatStrip({
             key={item.label}
             className="rounded-xl border border-border bg-card p-4 shadow-sm"
           >
-            <dt className="truncate text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            <dt className="truncate text-[11px] font-medium uppercase tracking-wide text-muted-foreground sm:text-xs">
               {item.label}
             </dt>
             <dd className="mt-1 flex flex-wrap items-baseline gap-2">

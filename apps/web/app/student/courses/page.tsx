@@ -11,6 +11,7 @@ import {
   TableCell,
 } from "@/components/ui/table";
 import Link from "next/link";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   Chip,
@@ -46,9 +47,14 @@ export default function StudentCoursesPage() {
         title="My courses"
         description="Courses you are enrolled in and their teachers."
       >
-        <Link href="/student/teachers" className="border border-border bg-card text-foreground shadow-sm hover:bg-secondary">
-          Browse teachers
-        </Link>
+        {/*
+         * `Button asChild` owns the height, padding and hover state. The old
+         * bare class list left a 129x26 link beside a 44px primary button, so
+         * the secondary action looked like plain text.
+         */}
+        <Button asChild variant="outline" size="xl">
+          <Link href="/student/teachers">Browse teachers</Link>
+        </Button>
       </PageHeader>
 
       <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
@@ -108,7 +114,34 @@ export default function StudentCoursesPage() {
           <h2 className="mb-3 mt-8 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
             History ({history.length})
           </h2>
-          <Card className="overflow-hidden">
+          {/*
+           * A stack of cards on a phone, the table from `sm`. Four columns do
+           * not fit 390px: "English Literature" wrapped to three lines, the
+           * teacher name was cut to "Ayesha", and the chip was sliced by the
+           * next cell — a row you cannot read is worse than no table.
+           */}
+          <div className="space-y-2 sm:hidden">
+            {history.map((course) => (
+              <Card key={course.enrollmentId} className="p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="font-medium text-foreground">
+                      {course.courseLabel}
+                    </p>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      {course.teacherName}
+                    </p>
+                  </div>
+                  <Chip tone={toneFor(course.state)}>{course.state}</Chip>
+                </div>
+                <p className="mt-3 text-xs text-muted-foreground">
+                  Requested {formatDay(course.requestedAt)}
+                </p>
+              </Card>
+            ))}
+          </div>
+
+          <Card className="hidden overflow-hidden sm:block">
             <Table>
               <TableHeader>
                 <TableRow>

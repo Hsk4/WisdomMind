@@ -5,6 +5,7 @@ import Link from "next/link";
 
 import { BrandMark } from "@/components/brand/primitives";
 import { ThemeToggle } from "@/components/shell/page-actions";
+import { errorMessage } from "@/lib/api-client";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api/v1";
 
@@ -29,7 +30,7 @@ export default function ForgotPasswordPage() {
       if (!response.ok || !payload.ok) throw new Error(payload.error ?? "Unable to request a reset link");
       setMessage(payload.data?.message ?? "If an account exists for that email, a password reset link will be sent.");
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Unable to request a reset link");
+      setError(errorMessage(cause, "Unable to request a reset link"));
     } finally {
       setBusy(false);
     }

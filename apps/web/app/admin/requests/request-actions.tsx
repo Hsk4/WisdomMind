@@ -1,7 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { Search } from "lucide-react";
 import { ActionButton } from "@/components/ui/action-form";
+import { Input } from "@/components/ui/input";
 import { api } from "@/lib/api-client";
 import { useAction, useAsync } from "@/lib/use-async";
 
@@ -25,6 +27,7 @@ export function RequestActions({
   const [role, setRole] = useState<string>(defaultRole);
   const [reason, setReason] = useState("");
   const [courseIds, setCourseIds] = useState<string[] | null>(null);
+  const [courseQuery, setCourseQuery] = useState("");
 
   const decide = useAction(onDecided);
 
@@ -39,7 +42,18 @@ export function RequestActions({
     [],
     { enabled: isTeacher },
   );
-  const courses = coursesQuery.data ?? [];
+  const courses = useMemo(
+    () => coursesQuery.data ?? [],
+    [coursesQuery.data],
+  );
+
+  // The course list is long; the box narrows the checkboxes, not the request.
+  const visibleCourses = useMemo(() => {
+    const needle = courseQuery.trim().toLowerCase();
+    return needle
+      ? courses.filter((course) => course.label.toLowerCase().includes(needle))
+      : courses;
+  }, [courses, courseQuery]);
 
   /*
    * Pre-tick the courses whose subject the applicant named, so the admin starts
@@ -148,21 +162,39 @@ export function RequestActions({
               the user&apos;s page.
             </p>
           ) : (
-            <div className="mt-1 grid max-h-56 gap-1 overflow-y-auto rounded-[var(--radius-card)] border border-border p-2 sm:grid-cols-2">
-              {courses.map((course) => (
-                <label
-                  key={course.id}
-                  className="flex items-start gap-2 text-sm"
-                >
-                  <input
-                    type="checkbox"
-                    className="mt-0.5"
-                    checked={selected.includes(course.id)}
-                    onChange={() => toggleCourse(course.id)}
-                  />
-                  <span className="min-w-0">{course.label}</span>
-                </label>
-              ))}
+            <div className="mt-1 space-y-2">
+              <div className="relative">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  type="search"
+                  value={courseQuery}
+                  onChange={(event) => setCourseQuery(event.target.value)}
+                  placeholder="Search courses"
+                  aria-label="Search courses"
+                  className="pl-9"
+                />
+              </div>
+              {visibleCourses.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  No course matches.
+                </p>
+              ) : null}
+              <div className="grid max-h-56 gap-1 overflow-y-auto rounded-[var(--radius-card)] border border-border p-2 sm:grid-cols-2">
+                {visibleCourses.map((course) => (
+                  <label
+                    key={course.id}
+                    className="flex items-start gap-2 text-sm"
+                  >
+                    <input
+                      type="checkbox"
+                      className="mt-0.5"
+                      checked={selected.includes(course.id)}
+                      onChange={() => toggleCourse(course.id)}
+                    />
+                    <span className="min-w-0">{course.label}</span>
+                  </label>
+                ))}
+              </div>
             </div>
           )}
           <p className="mt-1 text-xs text-muted-foreground">

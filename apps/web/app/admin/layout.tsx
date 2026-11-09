@@ -37,6 +37,7 @@ export default function AdminLayout({
       <PanelShell
         panel="admin"
         groups={groups}
+        mobile="bottom-tabs"
         badges={{ pending: user?.pendingRequests ?? 0 }}
         user={{
           name: user?.name ?? "",

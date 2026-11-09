@@ -6,7 +6,15 @@ const Table = React.forwardRef<
   HTMLTableElement,
   React.HTMLAttributes<HTMLTableElement>
 >(({ className, ...props }, ref) => (
-  <div className="relative w-full overflow-x-auto">
+  /*
+   * `max-h` + `overflow-auto` is what makes the sticky header below work: a
+   * `position: sticky` header only sticks inside a scrolling box. On a short
+   * table the box is the table's own height, so nothing changes visually.
+   *
+   * `overscroll-x-contain` stops a sideways swipe on a wide table from turning
+   * into a browser back/forward gesture on a phone.
+   */
+  <div className="relative max-h-[70vh] w-full overflow-auto overscroll-x-contain">
     <table
       ref={ref}
       className={cn("w-full caption-bottom text-sm", className)}
@@ -20,7 +28,11 @@ const TableHeader = React.forwardRef<
   HTMLTableSectionElement,
   React.HTMLAttributes<HTMLTableSectionElement>
 >(({ className, ...props }, ref) => (
-  <thead ref={ref} className={cn("[&_tr]:border-b", className)} {...props} />
+  <thead
+    ref={ref}
+    className={cn("[&_tr]:border-b", className)}
+    {...props}
+  />
 ));
 TableHeader.displayName = "TableHeader";
 
@@ -58,7 +70,7 @@ const TableRow = React.forwardRef<
   <tr
     ref={ref}
     className={cn(
-      "border-b border-border/70 transition-colors hover:bg-secondary/50 data-[state=selected]:bg-accent",
+      "border-b border-border/70 transition-colors hover:bg-secondary/50 active:bg-secondary/70 data-[state=selected]:bg-accent",
       className,
     )}
     {...props}
@@ -73,7 +85,7 @@ const TableHead = React.forwardRef<
   <th
     ref={ref}
     className={cn(
-      "h-11 whitespace-nowrap bg-secondary/60 px-4 text-left align-middle text-xs font-semibold uppercase tracking-wide text-muted-foreground",
+      "sticky top-0 z-10 h-11 whitespace-nowrap bg-secondary px-3 text-left align-middle text-xs font-semibold uppercase tracking-wide text-muted-foreground sm:px-4",
       className,
     )}
     {...props}
@@ -87,7 +99,7 @@ const TableCell = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <td
     ref={ref}
-    className={cn("px-4 py-3 align-middle text-sm", className)}
+    className={cn("px-3 py-3 align-middle text-sm sm:px-4 sm:py-3.5", className)}
     {...props}
   />
 ));

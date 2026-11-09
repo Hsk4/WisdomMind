@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { RequestStatusResponse } from "@lms/shared";
@@ -16,7 +16,7 @@ import { PanelLoading } from "@/lib/guards";
 import { api } from "@/lib/api-client";
 import { useAuth } from "@/lib/auth-context";
 import { webHomeFor } from "@/lib/role-home";
-import { usePolling } from "@/lib/queries";
+import { useAsync } from "@/lib/use-async";
 
 const STEPS = ["Account created", "Request under review", "Access granted"];
 
@@ -42,12 +42,22 @@ function PendingBody() {
   const { user, signedIn, loading: meLoading } = useAuth();
   const router = useRouter();
 
-  // Polls every 5 seconds while this page is open: it moves on by itself once
-  // an admin decides. The API is what decides; this is a redirect.
-  const statusQuery = usePolling<RequestStatusResponse>(
+  /*
+   * Re-reads every 5 seconds while this page is open, so it moves on by itself
+   * once an admin decides. The API is what decides; this is a redirect. The
+   * timer lives here rather than in `useAsync`: polling is the only caller.
+   */
+  const [tick, setTick] = useState(0);
+  const polling = signedIn && Boolean(user);
+  useEffect(() => {
+    if (!polling) return;
+    const id = window.setInterval(() => setTick((value) => value + 1), 5000);
+    return () => window.clearInterval(id);
+  }, [polling]);
+  const statusQuery = useAsync<RequestStatusResponse>(
     () => api.get<RequestStatusResponse>("/me/request"),
-    [],
-    signedIn && Boolean(user),
+    [tick],
+    { enabled: polling },
   );
   const status = statusQuery.data;
 

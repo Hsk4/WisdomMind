@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Fraunces, Geist_Mono, Inter } from "next/font/google";
 import { RootShell } from "@/views/layout/root-shell";
+import { SCHOOL_NAME } from "@/lib/school";
 import { THEME_BOOT_SCRIPT } from "@/lib/theme";
 import "./globals.css";
 
@@ -31,8 +32,13 @@ const fraunces = Fraunces({
   axes: ["SOFT", "WONK", "opsz"],
 });
 
+/*
+ * The build-time title. `SiteSettingsProvider` replaces `document.title` with
+ * the school's own name as soon as `GET /site-settings` answers, so a super
+ * admin's rename shows in the tab without a rebuild.
+ */
 export const metadata: Metadata = {
-  title: "Fastly — One school. Everyone in the loop.",
+  title: `${SCHOOL_NAME} — One school. Everyone in the loop.`,
   description:
     "A single-school learning platform for students, parents and teachers.",
 };

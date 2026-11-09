@@ -1,7 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { Search } from "lucide-react";
 import { ActionForm } from "@/components/ui/action-form";
+import { Input } from "@/components/ui/input";
 import { api } from "@/lib/api-client";
 
 export type CourseOption = { id: string; label: string };
@@ -16,17 +18,41 @@ function CoursePicker({
   idPrefix: string;
 }) {
   const [checked, setChecked] = useState<string[]>(selected);
+  const [query, setQuery] = useState("");
+
+  // A school can have hundreds of courses; the box narrows the checkbox list.
+  const visible = useMemo(() => {
+    const needle = query.trim().toLowerCase();
+    return needle
+      ? courses.filter((course) => course.label.toLowerCase().includes(needle))
+      : courses;
+  }, [courses, query]);
 
   return (
     <div>
       <p className="label">Courses</p>
+      {courses.length > 0 ? (
+        <div className="relative mb-2">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            type="search"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Search courses"
+            aria-label="Search courses"
+            className="pl-9"
+          />
+        </div>
+      ) : null}
       <div className="max-h-48 space-y-1 overflow-y-auto rounded-[var(--radius-card)] border border-border p-2">
         {courses.length === 0 ? (
           <p className="p-2 text-sm text-muted-foreground">
             No courses yet. Create one under Courses.
           </p>
+        ) : visible.length === 0 ? (
+          <p className="p-2 text-sm text-muted-foreground">No course matches.</p>
         ) : (
-          courses.map((course) => (
+          visible.map((course) => (
             <label key={course.id} className="flex items-center gap-2 text-sm">
               <input
                 id={`${idPrefix}-${course.id}`}
@@ -144,7 +170,11 @@ export function EditBookForm({
         </label>
         <input id="edit-author" name="author" defaultValue={book.author} className="input" />
       </div>
-      <CoursePicker courses={courses} selected={book.courseIds} idPrefix="edit" />
+      <CoursePicker
+        courses={courses}
+        selected={book.courseIds}
+        idPrefix={`edit-${book.id}`}
+      />
       <div>
         <label className="label" htmlFor="edit-note">
           Note

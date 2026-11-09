@@ -1,3 +1,5 @@
+"use client";
+
 import * as React from "react";
 import { Search, X } from "lucide-react";
 
@@ -10,7 +12,7 @@ export interface FilterOption {
 }
 
 export interface FilterConfig {
-  /** Query-string key, e.g. "status". */
+  /** Key the page reads from `useListState().filters`. */
   id: string;
   label: string;
   options: FilterOption[];
@@ -18,102 +20,108 @@ export interface FilterConfig {
 }
 
 interface ListToolbarProps {
-  /** Where the form submits; usually the current pathname. */
-  action: string;
-  searchParam?: string;
   searchPlaceholder?: string;
+  /** Controlled by `useListState`; typing is debounced by the hook. */
   searchValue: string;
+  onSearchChange: (value: string) => void;
   filters?: FilterConfig[];
+  onFilterChange?: (id: string, value: string) => void;
   /** True when any filter/search is set, so "Clear" is worth showing. */
+  hasActiveFilters?: boolean;
+  onClear?: () => void;
   className?: string;
   /** Buttons that belong beside the filters (e.g. "Add user"). */
   children?: React.ReactNode;
 }
 
 /**
- * Reference kit `ListToolbar` as a GET form.
+ * The list toolbar, as a controlled client component.
  *
- * The reference filtered client-side, so a `Select` could call `onChange`
- * directly. These lists are paged server-side from Postgres, so the controls
- * are plain form fields and the URL is the state: submitting re-renders the
- * server component with new rows, the back button works, and a filtered view
- * can be bookmarked or pasted into a ticket.
- *
- * `Clear` is a link back to `action`, not a JS reset, for the same reason.
+ * It used to be a native GET `<form>`: every Apply was a full page load, and
+ * in the Capacitor build a navigation to a path outside the static export
+ * bounced the user to sign-in. Now the page owns the state (`useListState`),
+ * the search debounces, and a select applies on change — no submit, no reload.
  */
 export function ListToolbar({
-  action,
-  searchParam = "q",
   searchPlaceholder = "Search...",
   searchValue,
+  onSearchChange,
   filters = [],
+  onFilterChange,
+  hasActiveFilters = false,
+  onClear,
+  className,
   children,
 }: ListToolbarProps) {
-  const hasActiveFilters =
-    searchValue.trim().length > 0 || filters.some((filter) => filter.value);
-
   return (
-    <form
-      action={action}
-      method="get"
+    <div
       role="search"
-      className="fastly-card flex flex-col gap-3 bg-card p-4 md:flex-row md:items-center md:justify-between"
+      className={
+        className ??
+        "fastly-card flex flex-col gap-3 bg-card p-4 md:flex-row md:items-center md:justify-between"
+      }
     >
       <div className="relative w-full md:max-w-xs">
         <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
           type="search"
-          name={searchParam}
-          defaultValue={searchValue}
+          value={searchValue}
+          onChange={(event) => onSearchChange(event.target.value)}
           placeholder={searchPlaceholder}
-          className="pl-9"
+          /* 44px on a phone: the kit's minimum touch height. */
+          className="h-11 pl-9 md:h-10"
           aria-label={searchPlaceholder}
         />
       </div>
 
-      <div className="flex flex-wrap items-center gap-2">
-        {filters.map((filter) => (
-          <label key={filter.id} className="sr-only" htmlFor={`f-${filter.id}`}>
-            {filter.label}
-          </label>
-        ))}
-        {filters.map((filter) => (
-          <select
-            key={filter.id}
-            id={`f-${filter.id}`}
-            name={filter.id}
-            defaultValue={filter.value}
-            aria-label={filter.label}
-            className="input w-[150px]"
-          >
-            {filter.options.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-        ))}
+      {/*
+       * On a phone the filters scroll sideways in one row instead of wrapping
+       * into a stack of full-width selects, which pushed the table below the
+       * fold. The third select is therefore cut at the right edge by design, so
+       * a fade marks it as scrollable. From `md` the wrapper steps aside
+       * (`contents`) and the filters wrap normally.
+       */}
+      <div className="relative md:contents">
+        <div className="quiet-scroll -mx-1 flex items-center gap-2 overflow-x-auto px-1 pb-1 md:mx-0 md:flex-wrap md:overflow-visible md:px-0 md:pb-0">
+          {filters.map((filter) => (
+            <select
+              key={filter.id}
+              id={`f-${filter.id}`}
+              value={filter.value}
+              onChange={(event) =>
+                onFilterChange?.(filter.id, event.target.value)
+              }
+              aria-label={filter.label}
+              className="input h-11 w-[150px] shrink-0 md:h-10"
+            >
+              {filter.options.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          ))}
 
-        <Button type="submit" size="sm">
-          Apply
-        </Button>
-
-        {hasActiveFilters ? (
-          <Button
-            asChild
-            variant="ghost"
-            size="sm"
-            className="text-muted-foreground"
-          >
-            <a href={action}>
+          {hasActiveFilters && onClear ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-11 shrink-0 text-muted-foreground md:h-9"
+              onClick={onClear}
+            >
               <X />
               Clear
-            </a>
-          </Button>
-        ) : null}
+            </Button>
+          ) : null}
 
-        {children}
+          {children}
+        </div>
+        <span
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-y-0 right-0 w-8 bg-gradient-to-l from-card to-transparent md:hidden"
+        />
       </div>
-    </form>
+    </div>
   );
 }

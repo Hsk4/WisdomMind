@@ -371,7 +371,7 @@ describe("admin review", () => {
     const [account] = await db
       .select()
       .from(users)
-      .where(eq(users.clerkId, "p_approve"));
+      .where(eq(users.id, "p_approve"));
     expect(account.role).toBe("parent");
     expect(account.status).toBe("active");
   });

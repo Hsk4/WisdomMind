@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { ActionButton, ActionForm } from "@/components/ui/action-form";
+import { SearchSelect } from "@/components/ui/search-select";
 import { api } from "@/lib/api-client";
 
 type Option = { id: string; name: string; active: boolean };
@@ -36,6 +37,10 @@ export function CourseForm({
 }) {
   const refresh = onDone ?? noop;
   const active = (list: Option[]) => list.filter((item) => item.active);
+  // Controlled, so the searchable pickers can carry their ids into `FormData`.
+  const [boardId, setBoardId] = useState("");
+  const [levelId, setLevelId] = useState("");
+  const [subjectId, setSubjectId] = useState("");
 
   return (
     <ActionForm
@@ -57,40 +62,55 @@ export function CourseForm({
         <label className="label" htmlFor="course-board">
           Board
         </label>
-        <select id="course-board" name="boardId" className="input" defaultValue="" required>
-          <option value="" disabled>Choose an exam board</option>
-          {active(boards).map((board) => (
-            <option key={board.id} value={board.id}>
-              {board.name}
-            </option>
-          ))}
-        </select>
+        <SearchSelect
+          id="course-board"
+          name="boardId"
+          options={active(boards).map((board) => ({
+            value: board.id,
+            label: board.name,
+          }))}
+          value={boardId}
+          onChange={setBoardId}
+          placeholder="Search boards"
+          emptyLabel="Choose an exam board"
+          required
+        />
       </div>
       <div>
         <label className="label" htmlFor="course-level">
           Level
         </label>
-        <select id="course-level" name="levelId" className="input" defaultValue="" required>
-          <option value="" disabled>Choose a level</option>
-          {active(levels).map((level) => (
-            <option key={level.id} value={level.id}>
-              {level.name}
-            </option>
-          ))}
-        </select>
+        <SearchSelect
+          id="course-level"
+          name="levelId"
+          options={active(levels).map((level) => ({
+            value: level.id,
+            label: level.name,
+          }))}
+          value={levelId}
+          onChange={setLevelId}
+          placeholder="Search levels"
+          emptyLabel="Choose a level"
+          required
+        />
       </div>
       <div>
         <label className="label" htmlFor="course-subject">
           Subject
         </label>
-        <select id="course-subject" name="subjectId" className="input" defaultValue="" required>
-          <option value="" disabled>Choose a subject</option>
-          {active(subjects).map((subject) => (
-            <option key={subject.id} value={subject.id}>
-              {subject.name}
-            </option>
-          ))}
-        </select>
+        <SearchSelect
+          id="course-subject"
+          name="subjectId"
+          options={active(subjects).map((subject) => ({
+            value: subject.id,
+            label: subject.name,
+          }))}
+          value={subjectId}
+          onChange={setSubjectId}
+          placeholder="Search subjects"
+          emptyLabel="Choose a subject"
+          required
+        />
       </div>
       <div>
         <label className="label" htmlFor="course-medium">

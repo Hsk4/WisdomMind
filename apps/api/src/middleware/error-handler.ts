@@ -224,7 +224,11 @@ export const errorHandler: ErrorRequestHandler = (error, req, res, _next) => {
   }
 
   if (error instanceof HttpError) {
-    res.status(error.status).json({ ok: false, error: error.message });
+    res.status(error.status).json({
+      ok: false,
+      error: error.message,
+      ...(error.code ? { code: error.code } : {}),
+    });
     return;
   }
 

@@ -20,7 +20,6 @@ export async function me(req: Request): Promise<MeResponse> {
 
   return {
     id: actor.id,
-    clerkId: actor.clerkId,
     email: actor.email,
     name: actor.name,
     role: actor.role,

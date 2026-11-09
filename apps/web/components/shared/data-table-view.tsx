@@ -19,6 +19,12 @@ interface DataTableViewProps {
   emptyDescription?: string;
   emptyIcon?: React.ComponentType<{ className?: string }>;
   emptyAction?: React.ReactNode;
+  /**
+   * A reload is in flight while rows are already on screen. The rows stay
+   * visible (dimmed) instead of flashing back to the skeleton, which reads as
+   * "your data is gone" for a second.
+   */
+  refreshing?: boolean;
   className?: string;
   /** The `<Table>` itself. */
   children?: React.ReactNode;
@@ -48,6 +54,7 @@ export function DataTableView({
   emptyDescription,
   emptyIcon,
   emptyAction,
+  refreshing = false,
   className,
   children,
 }: DataTableViewProps) {
@@ -56,7 +63,7 @@ export function DataTableView({
       {toolbar}
       {loading ? (
         <div
-          className="rounded-xl border border-border bg-card p-6 shadow-sm"
+          className="fastly-card bg-card p-6"
           aria-busy="true"
           aria-live="polite"
         >
@@ -79,8 +86,29 @@ export function DataTableView({
           action={emptyAction}
         />
       ) : (
-        <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
+        <div
+          className={cn(
+            /*
+             * `fastly-card` is the brand's 1.5px hairline card. The table
+             * inside scrolls sideways on a phone, so the corners are clipped
+             * here rather than by `overflow-hidden` on the card itself (which
+             * would also clip the sticky header's shadow-free edge).
+             */
+            "fastly-card relative overflow-hidden bg-card transition-opacity",
+            refreshing && "opacity-60",
+          )}
+          aria-busy={refreshing || undefined}
+        >
           {children}
+          {/*
+           * On a phone the last column is often half off-screen. The fade is
+           * the cue that the table continues; without it a clipped "Status"
+           * column reads as a broken layout, not as a table you can swipe.
+           */}
+          <span
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-y-0 right-0 w-6 bg-gradient-to-l from-card to-transparent lg:hidden"
+          />
         </div>
       )}
       {footer}

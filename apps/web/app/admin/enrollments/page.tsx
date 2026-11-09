@@ -1,7 +1,10 @@
 "use client";
 
 import { useAsync } from "@/lib/use-async";
+import { useTableControls } from "@/lib/use-table-controls";
 import { PageHeader, Card, Empty } from "@/components/ui/nila";
+import { ListToolbar } from "@/components/shared/list-toolbar";
+import { Pagination } from "@/components/shared/pagination";
 import { api } from "@/lib/api-client";
 import { ReassignForm } from "./reassign-form";
 
@@ -24,17 +27,33 @@ export default function AdminEnrollmentsPage() {
   );
   const items = enrollmentsQuery.data ?? [];
 
+  // The API returns every open enrollment; search and paging happen here.
+  const table = useTableControls(items, {
+    searchText: (item) =>
+      `${item.studentName} ${item.studentEmail} ${item.courseLabel} ${item.teacherName} ${item.className ?? ""}`,
+    pageSize: 20,
+  });
+
   return (
     <>
       <PageHeader
         title="Enrollments"
         description="Reassign a student to another teacher. The old enrollment is cancelled and the new one created in one transaction."
       />
+      <ListToolbar
+        searchPlaceholder="Search student, course or teacher"
+        searchValue={table.searchInput}
+        onSearchChange={table.setSearchInput}
+        hasActiveFilters={table.hasActiveFilters}
+        onClear={table.clear}
+      />
       {items.length === 0 ? (
         <Empty>No open enrollments.</Empty>
+      ) : table.rows.length === 0 ? (
+        <Empty>No enrollment matches. Try a different search.</Empty>
       ) : (
         <div className="space-y-3">
-          {items.map((item) => (
+          {table.rows.map((item) => (
             <Card key={item.id} className="p-4">
               <div className="flex flex-wrap items-start justify-between gap-2">
                 <div>
@@ -62,6 +81,13 @@ export default function AdminEnrollmentsPage() {
           ))}
         </div>
       )}
+      <Pagination
+        page={table.page}
+        pageCount={table.pageCount}
+        totalItems={table.matched}
+        pageSize={20}
+        onPageChange={table.setPage}
+      />
     </>
   );
 }

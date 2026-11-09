@@ -1,8 +1,9 @@
 "use client";
 
-import { useSearchParams } from "next/navigation";
 import { useAsync } from "@/lib/use-async";
-import { api } from "@/lib/api-client";
+import { api, errorMessage } from "@/lib/api-client";
+import { useAuth } from "@/lib/auth-context";
+import { useListState } from "@/lib/use-list-state";
 import {
   Table,
   TableHeader,
@@ -11,28 +12,33 @@ import {
   TableRow,
   TableCell,
 } from "@/components/ui/table";
-import Link from "next/link";
-import { Fragment } from "react";
-import { ArrowUpRight, ChevronRight } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { DataTableView } from "@/components/shared/data-table-view";
 import { ListToolbar } from "@/components/shared/list-toolbar";
 import { Pagination } from "@/components/shared/pagination";
 import { StatStrip } from "@/components/shared/stat-strip";
-
-import { TeacherCoursesForm } from "./teacher-courses";
-
-import { UsersAutoRefresh } from "./auto-refresh";
+import { ErrorState } from "@/components/shared/error-state";
 import {
   PageHeader,
   RoleChip,
   StatusChip,
   formatDay,
 } from "@/components/ui/nila";
+import { UserRowActions } from "./user-row-actions";
 
 const STATUSES = ["", "pending", "active", "rejected", "suspended"];
-const ROLES = ["", "super_admin", "admin", "teacher", "student", "parent"];
 const PAGE_SIZE = 25;
+
+/**
+ * Role tabs. "All" is the default; the rest narrow the same list, so the
+ * office can answer "who are the parents?" without a dropdown.
+ */
+const ROLE_TABS = [
+  { value: "", label: "All" },
+  { value: "student", label: "Students" },
+  { value: "parent", label: "Parents" },
+  { value: "teacher", label: "Teachers" },
+  { value: "admin", label: "Admins" },
+] as const;
 
 type UserRow = {
   id: string;
@@ -44,7 +50,6 @@ type UserRow = {
   createdAt: string;
   board?: string;
   level?: string;
-  rejectionReason?: string;
 };
 
 type UsersResponse = {
@@ -55,109 +60,169 @@ type UsersResponse = {
   users: UserRow[];
 };
 
-type TeacherCourseRow = { id: string; label: string; teacherIds: string[] };
+type CatalogLists = {
+  boards: { id: string; name: string }[];
+  levels: { id: string; name: string }[];
+};
 
 /**
- * The list is paged by the API from Postgres; `q`, `status`, `role` and `page`
- * live in the URL so the back button and bookmarks keep working.
+ * The list is paged by the API from Postgres. Search, filters and the page
+ * live in `useListState`, so a filter click is a re-render — never a page
+ * load, which the Capacitor build cannot serve.
  */
 export default function AdminUsersPage() {
-  const params = useSearchParams();
-  const status = params.get("status") ?? "";
-  const role = params.get("role") ?? "";
-  const q = params.get("q") ?? "";
-  const rawPage = params.get("page") ?? "1";
+  const { user: me } = useAuth();
+  const list = useListState(["status", "role", "boardId", "levelId"]);
+  const { status, role, boardId, levelId } = list.filters;
 
   const usersQuery = useAsync(
-    () => api.get<UsersResponse>("/admin/users", {
+    () =>
+      api.get<UsersResponse>("/admin/users", {
         status,
         role,
-        q,
-        page: rawPage,
+        boardId,
+        levelId,
+        q: list.search,
+        page: list.page,
         pageSize: PAGE_SIZE,
       }),
-    [status, role, q, rawPage],
+    [status, role, boardId, levelId, list.search, list.page],
   );
-  const teacherCoursesQuery = useAsync(
-    () => api.get<TeacherCourseRow[]>("/admin/catalog/teacher-courses"),
+  const catalogQuery = useAsync(
+    () => api.get<CatalogLists>("/admin/catalog"),
     [],
   );
 
-  const counts = usersQuery.data?.counts ?? { all: 0, active: 0, pending: 0, teachers: 0 };
+  const counts = usersQuery.data?.counts ?? {
+    all: 0,
+    active: 0,
+    pending: 0,
+    teachers: 0,
+  };
   const total = usersQuery.data?.total ?? 0;
   const page = usersQuery.data?.page ?? 1;
   const pageCount = usersQuery.data?.pageCount ?? 1;
   const users = usersQuery.data?.users ?? [];
-  const teacherAssignments = teacherCoursesQuery.data ?? [];
+  const boards = catalogQuery.data?.boards ?? [];
+  const levels = catalogQuery.data?.levels ?? [];
+
+  const actorRole = me?.role ?? null;
+  const canManage = (targetRole: string | null) =>
+    targetRole !== "super_admin" &&
+    (targetRole !== "admin" || actorRole === "super_admin");
 
   return (
-    <>
-      <UsersAutoRefresh onRefresh={usersQuery.reload} />
-      <div className="flex flex-col gap-6">
-        <PageHeader
-          title="Users"
-          description="Suspend, reinstate or open an account."
-        />
+    <div className="flex flex-col gap-6">
+      <PageHeader
+        title="Users"
+        description="Suspend, reinstate or open an account."
+      />
 
-        <StatStrip
-          items={[
-            { label: "Users", value: counts.all },
-            { label: "Active", value: counts.active },
-            {
-              label: "Awaiting approval",
-              value: counts.pending,
-              hint: counts.pending ? "Review on Requests" : "Queue clear",
-            },
-            { label: "Teachers", value: counts.teachers },
-          ]}
-        />
+      <StatStrip
+        items={[
+          { label: "Users", value: counts.all },
+          { label: "Active", value: counts.active },
+          {
+            label: "Awaiting approval",
+            value: counts.pending,
+            hint: counts.pending ? "Review on Requests" : "Queue clear",
+          },
+          { label: "Teachers", value: counts.teachers },
+        ]}
+      />
 
+      {/* Role tabs: one click to the group the office is looking for. */}
+      <div
+        className="flex flex-wrap items-center gap-1.5"
+        role="group"
+        aria-label="Filter users by role"
+      >
+        {ROLE_TABS.map((tab) => {
+          const active = role === tab.value;
+          return (
+            <button
+              key={tab.value || "all"}
+              type="button"
+              onClick={() => list.setFilter("role", tab.value)}
+              aria-pressed={active}
+              className={`chip h-8 px-3 transition-colors duration-150 ${
+                active
+                  ? "border-primary bg-tint text-tint-foreground"
+                  : "border-border text-muted-foreground hover:text-primary"
+              }`}
+            >
+              {tab.label}
+            </button>
+          );
+        })}
+      </div>
+
+      {usersQuery.error && users.length === 0 ? (
+        <ErrorState
+          description={errorMessage(
+            usersQuery.error,
+            "We could not load the user list right now.",
+          )}
+          onRetry={usersQuery.reload}
+        />
+      ) : (
         <DataTableView
           toolbar={
             <ListToolbar
-              action="/admin/users"
               searchPlaceholder="Search name or email"
-              searchValue={q ?? ""}
+              searchValue={list.searchInput}
+              onSearchChange={list.setSearchInput}
+              onFilterChange={list.setFilter}
+              hasActiveFilters={list.hasActiveFilters}
+              onClear={list.clear}
               filters={[
                 {
                   id: "status",
                   label: "Status",
-                  value: status ?? "",
+                  value: status,
                   options: STATUSES.map((value) => ({
                     value,
                     label: value || "Any status",
                   })),
                 },
                 {
-                  id: "role",
-                  label: "Role",
-                  value: role ?? "",
-                  options: ROLES.map((value) => ({
-                    value,
-                    label: value ? value.replace("_", " ") : "Any role",
-                  })),
+                  id: "boardId",
+                  label: "Board",
+                  value: boardId,
+                  options: [
+                    { value: "", label: "Any board" },
+                    ...boards.map((board) => ({
+                      value: board.id,
+                      label: board.name,
+                    })),
+                  ],
+                },
+                {
+                  id: "levelId",
+                  label: "Level",
+                  value: levelId,
+                  options: [
+                    { value: "", label: "Any level" },
+                    ...levels.map((level) => ({
+                      value: level.id,
+                      label: level.name,
+                    })),
+                  ],
                 },
               ]}
             />
           }
           footer={
             <Pagination
-              basePath="/admin/users"
               page={page}
               pageCount={pageCount}
               totalItems={total}
               pageSize={PAGE_SIZE}
-              searchParams={{
-                status,
-                role,
-                q,
-                page: page > 1 ? String(page) : undefined,
-                // Distinct from the current page so paging keeps the filters.
-                // (Pagination writes `page` itself.)
-              }}
+              onPageChange={list.setPage}
             />
           }
           loading={usersQuery.loading && users.length === 0}
+          refreshing={usersQuery.loading && users.length > 0}
           empty={users.length === 0}
           emptyTitle="No users match"
           emptyDescription="Try a different search or clear the filters."
@@ -168,15 +233,16 @@ export default function AdminUsersPage() {
                 <TableHead>Name</TableHead>
                 <TableHead>Role</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead>Board / level</TableHead>
-                <TableHead>Joined</TableHead>
+                <TableHead className="hidden md:table-cell">
+                  Board / level
+                </TableHead>
+                <TableHead className="hidden lg:table-cell">Joined</TableHead>
                 <TableHead />
               </TableRow>
             </TableHeader>
             <TableBody>
               {users.map((user) => (
-                <Fragment key={user.id}>
-                <TableRow>
+                <TableRow key={user.id}>
                   <TableCell>
                     <p className="font-medium">{user.name}</p>
                     <p className="text-xs text-muted-foreground">
@@ -189,55 +255,32 @@ export default function AdminUsersPage() {
                   <TableCell>
                     <StatusChip status={user.status} />
                   </TableCell>
-                  <TableCell className="text-sm text-muted-foreground">
-                    {[user.board, user.level].filter(Boolean).join(" / ") || "-"}
+                  <TableCell className="hidden text-sm text-muted-foreground md:table-cell">
+                    {/* Board and level only mean something for a student. */}
+                    {user.role === "student"
+                      ? [user.board, user.level].filter(Boolean).join(" / ") ||
+                        "—"
+                      : "—"}
                   </TableCell>
-                  <TableCell className="text-xs text-muted-foreground">
+                  <TableCell className="hidden text-xs text-muted-foreground lg:table-cell">
                     {formatDay(user.createdAt)}
                   </TableCell>
                   <TableCell className="w-px whitespace-nowrap text-end">
-                    {/* Icon button, like the reference kit's row actions: the
-                        row already says who this is, so a label repeated five
-                        times only adds noise. `aria-label` carries the name. */}
-                    <Button asChild variant="ghost" size="icon" className="h-8 w-8">
-                      <Link
-                        href={`/admin/users/detail?id=${user.id}`}
-                        aria-label={`Open ${user.name}`}
-                        title={`Open ${user.name}`}
-                      >
-                        <ArrowUpRight className="h-4 w-4" />
-                      </Link>
-                    </Button>
+                    <UserRowActions
+                      userId={user.id}
+                      name={user.name}
+                      role={user.role}
+                      status={user.status}
+                      canManage={canManage(user.role)}
+                      onDone={usersQuery.reload}
+                    />
                   </TableCell>
                 </TableRow>
-                {user.role === "teacher" ? (
-                  <TableRow className="bg-secondary/60 hover:bg-secondary/60">
-                    <TableCell colSpan={6} className="py-2">
-                      <details className="group">
-                        <summary className="flex cursor-pointer list-none items-center gap-2 text-sm font-medium text-foreground [&::-webkit-details-marker]:hidden">
-                          <ChevronRight className="h-4 w-4 text-muted-foreground transition-transform group-open:rotate-90" />
-                          Teachable courses for {user.name}
-                        </summary>
-                        <div className="mt-3 max-w-xl pl-6">
-                          <TeacherCoursesForm
-                            teacherId={user.id}
-                            courses={teacherAssignments.map((course) => ({
-                              id: course.id,
-                              label: course.label,
-                              selected: course.teacherIds.includes(user.id),
-                            }))}
-                          />
-                        </div>
-                      </details>
-                    </TableCell>
-                  </TableRow>
-                ) : null}
-                </Fragment>
               ))}
             </TableBody>
           </Table>
         </DataTableView>
-      </div>
-    </>
+      )}
+    </div>
   );
 }

@@ -94,12 +94,7 @@ async function seedSuperAdmin() {
       return;
     }
 
-    /*
-     * Same identity convention as `POST /auth/sign-up`: a local, unique
-     * `clerkId`. The column name is historical; the value is generated here.
-     */
     await tx.insert(users).values({
-      clerkId: `local-${email.replace(/[^a-z0-9]/g, "-")}-${Date.now()}`,
       email,
       name: "Super Admin",
       role: "super_admin",

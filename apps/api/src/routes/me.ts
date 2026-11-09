@@ -9,6 +9,13 @@ import { auth, createLocalSessionToken } from "@/middleware/auth";
 import { freshStatus, me, myRequestStatus } from "@/controllers/me";
 import { requestParentAccess, submitAccessRequest } from "@/controllers/onboarding";
 import { findUserByEmail, findUserCredentialsByEmail, createUser } from "@/db/queries/users";
+import {
+  bindParentDevice,
+  findParentDevice,
+  moveParentDevice,
+} from "@/db/queries/parent-devices";
+import { writeAudit } from "@/lib/audit";
+import { HttpError } from "@/lib/http-error";
 import { ok } from "@/lib/respond";
 import { hashPassword, verifyPassword } from "@/lib/password";
 import { sendPasswordResetEmail } from "@/lib/password-reset-email";
@@ -44,6 +51,82 @@ const passwordResetSubmitLimit = rateLimit({
 
 const hashResetToken = (token: string) =>
   crypto.createHash("sha256").update(token).digest("hex");
+
+/** The shortest reason we accept for moving a parent account to a new phone. */
+const MIN_DEVICE_CHANGE_REASON = 10;
+
+/**
+ * One phone per parent.
+ *
+ * Only the native app sends a `deviceId`; the web has no stable device, so a
+ * browser sign-in neither binds nor is refused. The first native sign-in binds
+ * the account. A different phone is refused with `DEVICE_LOCKED` until the
+ * parent says why they are switching — and that switch signs the old phone out
+ * by bumping `session_version`.
+ */
+async function enforceParentDevice(input: {
+  userId: string;
+  role: string | null;
+  deviceId: string;
+  deviceLabel: string | null;
+  deviceChangeReason: string | null;
+}): Promise<{ sessionVersionBump: boolean }> {
+  if (input.role !== "parent") return { sessionVersionBump: false };
+
+  const bound = await findParentDevice(input.userId);
+  if (!bound) {
+    await bindParentDevice({
+      parentId: input.userId,
+      deviceId: input.deviceId,
+      deviceLabel: input.deviceLabel,
+    });
+    return { sessionVersionBump: false };
+  }
+  if (bound.deviceId === input.deviceId) return { sessionVersionBump: false };
+
+  const reason = (input.deviceChangeReason ?? "").trim();
+  if (reason.length < MIN_DEVICE_CHANGE_REASON) {
+    throw new HttpError(
+      409,
+      "This account is already on another phone. Tell us why you are switching to use this one.",
+      "DEVICE_LOCKED",
+    );
+  }
+
+  await db.transaction(async (tx) => {
+    await moveParentDevice(
+      {
+        parentId: input.userId,
+        deviceId: input.deviceId,
+        deviceLabel: input.deviceLabel,
+        changeReason: reason,
+      },
+      tx,
+    );
+    // The other phone's token carries the old session version, so it stops
+    // working on its next request.
+    await tx
+      .update(users)
+      .set({ sessionVersion: sql`${users.sessionVersion} + 1` })
+      .where(eq(users.id, input.userId));
+    await writeAudit(
+      {
+        actorId: input.userId,
+        action: "switchParentDevice",
+        targetType: "User",
+        targetId: input.userId,
+        before: { deviceId: bound.deviceId, deviceLabel: bound.deviceLabel },
+        after: {
+          deviceId: input.deviceId,
+          deviceLabel: input.deviceLabel,
+          reason,
+        },
+      },
+      { tx },
+    );
+  });
+  return { sessionVersionBump: true };
+}
 
 // A syntactically valid dummy hash keeps unknown accounts on the same scrypt
 // verification path as accounts with an incorrect password.
@@ -84,21 +167,37 @@ meRoutes.post(
       return;
     }
 
+    const deviceId = String(req.body?.deviceId ?? "").trim();
+    const deviceLabel = String(req.body?.deviceLabel ?? "").trim() || null;
+    const deviceChangeReason =
+      String(req.body?.deviceChangeReason ?? "").trim() || null;
+
+    let sessionVersion = credentials?.sessionVersion ?? 0;
+    if (deviceId) {
+      const { sessionVersionBump } = await enforceParentDevice({
+        userId: user.id,
+        role: user.role,
+        deviceId,
+        deviceLabel,
+        deviceChangeReason,
+      });
+      if (sessionVersionBump) sessionVersion += 1;
+    }
+
     const token = createLocalSessionToken({
-      sub: user.clerkId,
+      sub: user.id,
       email: user.email,
       name: user.name,
       role: user.role,
       status: user.status,
       onboarded: user.onboarded,
-      sessionVersion: credentials?.sessionVersion ?? 0,
+      sessionVersion,
     });
 
     ok(res, {
       token,
       user: {
         id: user.id,
-        clerkId: user.clerkId,
         email: user.email,
         name: user.name,
         role: user.role,
@@ -139,7 +238,6 @@ meRoutes.post(
     const passwordHash = await hashPassword(password);
     const user = await createUser({
       passwordHash,
-      clerkId: `local-${email.replace(/[^a-z0-9]/g, "-")}-${Date.now()}`,
       email,
       name,
       role: null,
@@ -148,7 +246,7 @@ meRoutes.post(
     });
 
     const token = createLocalSessionToken({
-      sub: user.clerkId,
+      sub: user.id,
       email: user.email,
       name: user.name,
       role: user.role,
@@ -160,7 +258,6 @@ meRoutes.post(
       token,
       user: {
         id: user.id,
-        clerkId: user.clerkId,
         email: user.email,
         name: user.name,
         role: user.role,

@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useAsync } from "@/lib/use-async";
 import { PageHeader, Card } from "@/components/ui/nila";
-import { api } from "@/lib/api-client";
+import { api, errorMessage } from "@/lib/api-client";
 import { EditBookForm } from "../book-ui";
 import { InlineLoading } from "@/components/shared/skeleton";
 
@@ -36,7 +36,9 @@ function DetailById() {
   }
   if (bookQuery.error) {
     return (
-      <p className="p-6 text-sm text-status-red">{bookQuery.error.message}</p>
+      <p className="p-6 text-sm text-status-red">
+        {errorMessage(bookQuery.error, "We could not load this book.")}
+      </p>
     );
   }
   const book = bookQuery.data;

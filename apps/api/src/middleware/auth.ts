@@ -2,13 +2,16 @@ import crypto from "node:crypto";
 import type { NextFunction, Request, Response } from "express";
 import { homeFor, type UserRole, type UserStatus } from "@lms/shared";
 import { forbidden, notReady, unauthorized } from "@/lib/http-error";
-import { findUserAuthByClerkId } from "@/db/queries/users";
+import { findUserAuthById } from "@/db/queries/users";
 import type { GateUser } from "@lms/shared";
 
 /**
- * Token -> account. The Postgres row is authoritative for role/status, and a
- * verified token without a local row is treated as a pending account instead of
- * depending on any hosted identity provider.
+ * Token -> account. The Postgres row is authoritative for role/status.
+ *
+ * The token's `sub` is the local `users.id`. There is no hosted identity
+ * provider any more, so a verified token whose row is gone is refused rather
+ * than adopted: the account was deleted, and a deleted account must not keep
+ * working until its token expires.
  */
 
 export const AUTH_VERIFIER = Symbol("auth-verifier");
@@ -17,7 +20,8 @@ export const AUTH_VERIFIER = Symbol("auth-verifier");
 export type TokenVerifier = (
   token: string,
 ) => Promise<{
-  clerkId: string;
+  /** The local `users.id`. */
+  userId: string;
   metadata: { role?: string | null; status?: string; onboarded?: boolean };
   sessionVersion?: number;
 }>;
@@ -98,7 +102,7 @@ export function localTokenVerifier(): TokenVerifier {
     }
 
     return {
-      clerkId: payload.sub,
+      userId: payload.sub,
       metadata: {
         role: typeof payload.role === "string" ? payload.role : null,
         status: typeof payload.status === "string" ? payload.status : "pending",
@@ -113,11 +117,10 @@ export function localTokenVerifier(): TokenVerifier {
 }
 
 function toGateUser(
-  row: NonNullable<Awaited<ReturnType<typeof findUserAuthByClerkId>>>["user"],
+  row: NonNullable<Awaited<ReturnType<typeof findUserAuthById>>>["user"],
 ): GateUser {
   return {
     id: row.id,
-    clerkId: row.clerkId,
     email: row.email,
     name: row.name,
     role: row.role,
@@ -128,34 +131,13 @@ function toGateUser(
   };
 }
 
-async function resolveUser(clerkId: string): Promise<{ user: GateUser; sessionVersion: number } | null> {
-  const record = await findUserAuthByClerkId(clerkId);
+async function resolveUser(
+  userId: string,
+): Promise<{ user: GateUser; sessionVersion: number } | null> {
+  const record = await findUserAuthById(userId);
   return record
     ? { user: toGateUser(record.user), sessionVersion: record.sessionVersion }
     : null;
-}
-
-/**
- * A valid token whose account row is not present is treated as pending.
- * Its initial session version is zero, matching newly-created local accounts.
- */
-async function adoptOrPending(
-  clerkId: string,
-): Promise<{ user: GateUser; sessionVersion: number }> {
-  return (
-    (await resolveUser(clerkId)) ?? {
-      user: {
-        id: clerkId,
-        clerkId,
-        email: "",
-        name: "User",
-        role: null,
-        status: "pending",
-        onboarded: false,
-      },
-      sessionVersion: 0,
-    }
-  );
 }
 
 declare global {
@@ -163,8 +145,6 @@ declare global {
   namespace Express {
     interface Request {
       user?: GateUser;
-      /** Set for every token that verifies, even before the mirror row exists. */
-      clerkId?: string;
     }
   }
 }
@@ -197,8 +177,10 @@ export function auth(opts: { allowRestricted?: boolean } = {}) {
         throw unauthorized();
       }
 
-      req.clerkId = session.clerkId;
-      const record = await adoptOrPending(session.clerkId);
+      const record = await resolveUser(session.userId);
+      // No row: the account was deleted, or the token predates the switch to
+      // user-id subjects. Either way the session is over.
+      if (!record) throw unauthorized();
       if ((session.sessionVersion ?? 0) !== record.sessionVersion) {
         throw unauthorized();
       }
@@ -206,7 +188,7 @@ export function auth(opts: { allowRestricted?: boolean } = {}) {
       req.user = user;
 
       if (user.status === "suspended") {
-        throw notReady("Unauthorized: account is suspended");
+        throw notReady("This account is suspended. Contact the school office.");
       }
 
       if (restricted) return next();
@@ -246,11 +228,7 @@ export function requireRole(...roles: UserRole[]) {
      * decides access here.
      */
     if (!user.role || !roles.includes(user.role)) {
-      return next(
-        forbidden(
-          `Unauthorized: role ${user.role ?? "none"} not in ${roles.join(", ")}`,
-        ),
-      );
+      return next(forbidden("You do not have access to this page."));
     }
     next();
   };

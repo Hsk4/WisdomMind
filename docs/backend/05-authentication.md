@@ -89,7 +89,7 @@ A JWT signed with **HS256** using `AUTH_JWT_SECRET`:
 
 ```ts
 const claims = {
-  sub: user.clerkId, // the account's identity string
+  sub: user.id, // the account's uuid — the only identity there is
   email,
   name,
   role,
@@ -130,7 +130,8 @@ const [scheme, token] = (req.headers.authorization ?? "").split(" ");
 if (scheme !== "Bearer" || !token) throw unauthorized();
 
 const session = await verify(token); // signature + expiry
-const record = await adoptOrPending(session.clerkId);
+const record = await resolveUser(session.userId); // the users row, by id
+if (!record) throw unauthorized();
 if (session.sessionVersion !== record.sessionVersion) throw unauthorized();
 
 req.user = record.user;
@@ -289,15 +290,37 @@ if (response.status === 401) notifyUnauthorized();
 ```
 
 `AuthProvider` clears the session, and the guards redirect on the next render.
+The reason is kept (`clearSession(reason)`) and shown on the sign-in page by
+`app/sign-in/sign-in-notice.tsx` — for example "you were signed out because
+this account was opened on another phone".
 
 ### The provider
 
 `apps/web/lib/auth-context.tsx` holds the session in plain React state:
 
 - one `/me` request per page load, **only when a token exists**;
-- `ready` is false until the client has actually read `localStorage`, so a hard
-  load never looks signed out for a tick;
+- the token is read from `localStorage` on the first client render, and `ready`
+  is false during the static export's prerender, so a hard load never looks
+  signed out for a tick;
+- the stored profile is only a first-paint hint; `/me` replaces it;
 - `signOut()` clears storage and navigates.
+
+### One phone per parent
+
+A parent account is bound to one phone. Only the native app (Capacitor) sends a
+device: `lib/device.ts` keeps a random id in `localStorage` and a readable
+label. A sign-in from a second phone is refused with `code: "DEVICE_LOCKED"`;
+the form then asks why (at least 10 characters) and resubmits with
+`deviceChangeReason`. That switch signs the other phone out. A browser sign-in
+neither binds nor is refused. The office can unlock a phone from the user's row
+menu (`POST /admin/users/:id/device/reset`).
+
+### Link codes have two uses
+
+A student's guardian link code can be redeemed by the parent, and once by a
+super admin as a test. The test use never links anything; it only proves the
+code works, and it is spent once (`parent_invites.test_redeemed_at`). The admin
+page shows whether each code still has its test use.
 
 > **Why not a query cache?** It was one, and it caused a 401 storm: every page
 > mounted a guard, each fired `/me` with no token, and each 401 triggered a

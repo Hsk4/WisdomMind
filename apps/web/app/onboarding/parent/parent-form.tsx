@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { api } from "@/lib/api-client";
+import { api, errorMessage } from "@/lib/api-client";
 import { useAuth } from "@/lib/auth-context";
 
 /**
@@ -78,11 +78,7 @@ export function ParentOnboardingForm() {
           );
           setIssued(issuedCode);
         } catch (error) {
-          setMessage(
-            error instanceof Error
-              ? error.message
-              : "Could not create a link code",
-          );
+          setMessage(errorMessage(error, "Could not create a link code"));
         } finally {
           setPending(false);
         }

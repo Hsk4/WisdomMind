@@ -1,7 +1,9 @@
 "use client";
 
+import { Suspense, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useAsync } from "@/lib/use-async";
+import { useTableControls } from "@/lib/use-table-controls";
 import { api } from "@/lib/api-client";
 import {
   Table,
@@ -13,6 +15,9 @@ import {
 import Link from "next/link";
 
 import { PageHeader, Card, Empty } from "@/components/ui/nila";
+import { ListToolbar } from "@/components/shared/list-toolbar";
+import { Pagination } from "@/components/shared/pagination";
+import { InlineLoading } from "@/components/shared/skeleton";
 import { CourseForm, CourseRow } from "./course-ui";
 import { LevelForm, LevelRow } from "./level-ui";
 import { SubjectForm, SubjectRow } from "./subject-ui";
@@ -43,11 +48,21 @@ const TABS = [
 ] as const;
 
 export default function CoursesPage() {
+  // `useSearchParams` needs a Suspense boundary in a static export.
+  return (
+    <Suspense fallback={<InlineLoading />}>
+      <CoursesContent />
+    </Suspense>
+  );
+}
+
+function CoursesContent() {
   const params = useSearchParams();
   const tab = params.get("tab") ?? "courses";
-  const board = params.get("board") ?? undefined;
-  const level = params.get("level") ?? undefined;
   const activeTab = TABS.some((t) => t.key === tab) ? tab : "courses";
+  // Tabs are state, not links: a navigation would reload the static export.
+  const [selectedTab, setSelectedTab] = useState<string | null>(null);
+  const currentTab = selectedTab ?? activeTab;
 
   const catalogQuery = useAsync(
     () => api.get<CatalogLists>("/admin/catalog"),
@@ -60,14 +75,6 @@ export default function CoursesPage() {
 
   const { boards = [], levels = [], subjects = [] } = catalogQuery.data ?? {};
   const courses = coursesQuery.data ?? [];
-
-  const filtered = courses
-    .filter((c) => (board ? c.boardId === board : true))
-    .filter((c) => (level ? c.levelId === level : true))
-    .sort(
-      (a, b) =>
-        a.levelOrder - b.levelOrder || a.subject.localeCompare(b.subject),
-    );
 
   return (
     <>
@@ -82,10 +89,12 @@ export default function CoursesPage() {
 
       <div className="mb-5 flex flex-wrap items-center gap-1 border-b border-border pb-2">
         {TABS.map((item) => (
-          <Link
+          <button
             key={item.key}
-            href={`/admin/courses?tab=${item.key}`}
-            className={`tab ${activeTab === item.key ? "tab-active" : ""}`}
+            type="button"
+            onClick={() => setSelectedTab(item.key)}
+            aria-pressed={currentTab === item.key}
+            className={`tab ${currentTab === item.key ? "tab-active" : ""}`}
           >
             {item.label}
             <span className="ms-2 text-xs text-muted-foreground">
@@ -95,84 +104,22 @@ export default function CoursesPage() {
                   ? levels.length
                   : subjects.length}
             </span>
-          </Link>
+          </button>
         ))}
       </div>
 
-      {activeTab === "courses" ? (
+      {currentTab === "courses" ? (
         <CoursesTab
           boards={boards}
           levels={levels}
           subjects={subjects}
-          courses={filtered}
-          selectedBoard={board}
-          selectedLevel={level}
+          courses={courses}
         />
       ) : null}
 
-      {activeTab === "levels" ? <LevelsTab levels={levels} /> : null}
-      {activeTab === "subjects" ? <SubjectsTab subjects={subjects} /> : null}
+      {currentTab === "levels" ? <LevelsTab levels={levels} /> : null}
+      {currentTab === "subjects" ? <SubjectsTab subjects={subjects} /> : null}
     </>
-  );
-}
-
-function Filters({
-  boards,
-  levels,
-  board,
-  level,
-}: {
-  boards: { id: string; name: string }[];
-  levels: { id: string; name: string }[];
-  board?: string;
-  level?: string;
-}) {
-  return (
-    <form className="flex flex-wrap items-end gap-2">
-      <input type="hidden" name="tab" value="courses" />
-      <div>
-        <label className="label" htmlFor="filter-board">
-          Board
-        </label>
-        <select
-          id="filter-board"
-          name="board"
-          defaultValue={board ?? ""}
-          className="input w-48"
-        >
-          <option value="">All boards</option>
-          {boards.map((b) => (
-            <option key={b.id} value={b.id}>
-              {b.name}
-            </option>
-          ))}
-        </select>
-      </div>
-      <div>
-        <label className="label" htmlFor="filter-level">
-          Level
-        </label>
-        <select
-          id="filter-level"
-          name="level"
-          defaultValue={level ?? ""}
-          className="input w-44"
-        >
-          <option value="">All levels</option>
-          {levels.map((l) => (
-            <option key={l.id} value={l.id}>
-              {l.name}
-            </option>
-          ))}
-        </select>
-      </div>
-      <button type="submit" className="border border-border bg-card text-foreground shadow-sm hover:bg-secondary">
-        Apply
-      </button>
-      <Link href="/admin/courses" className="text-primary hover:bg-tint hover:text-tint-foreground">
-        Reset
-      </Link>
-    </form>
   );
 }
 
@@ -181,39 +128,85 @@ function CoursesTab({
   levels,
   subjects,
   courses,
-  selectedBoard,
-  selectedLevel,
 }: {
   boards: { id: string; name: string; active: boolean }[];
   levels: { id: string; name: string; active: boolean }[];
   subjects: { id: string; name: string; active: boolean }[];
-    courses: CourseRowData[];
-    selectedBoard?: string;
-    selectedLevel?: string;
-  }) {
-    const hasActiveOptions =
+  courses: CourseRowData[];
+}) {
+  const hasActiveOptions =
     boards.some((item) => item.active) &&
     levels.some((item) => item.active) &&
     subjects.some((item) => item.active);
 
+  /*
+   * Search, board/level filters and paging are client-side: the API returns
+   * every course, and a filter click must be a re-render, not a navigation
+   * (the Capacitor build cannot serve a new URL).
+   */
+  const table = useTableControls(
+    [...courses].sort(
+      (a, b) =>
+        a.levelOrder - b.levelOrder || a.subject.localeCompare(b.subject),
+    ),
+    {
+      searchText: (course) =>
+        `${course.label} ${course.board} ${course.level} ${course.subject} ${course.medium}`,
+      filterIds: ["boardId", "levelId"],
+      filters: {
+        boardId: (course, value) => course.boardId === value,
+        levelId: (course, value) => course.levelId === value,
+      },
+      pageSize: 25,
+    },
+  );
+
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <Filters
-          boards={boards}
-          levels={levels}
-          board={selectedBoard}
-          level={selectedLevel}
-        />
-      </div>
+      <ListToolbar
+        searchPlaceholder="Search courses"
+        searchValue={table.searchInput}
+        onSearchChange={table.setSearchInput}
+        onFilterChange={table.setFilter}
+        hasActiveFilters={table.hasActiveFilters}
+        onClear={table.clear}
+        filters={[
+          {
+            id: "boardId",
+            label: "Board",
+            value: table.filters.boardId ?? "",
+            options: [
+              { value: "", label: "All boards" },
+              ...boards.map((board) => ({
+                value: board.id,
+                label: board.name,
+              })),
+            ],
+          },
+          {
+            id: "levelId",
+            label: "Level",
+            value: table.filters.levelId ?? "",
+            options: [
+              { value: "", label: "All levels" },
+              ...levels.map((level) => ({
+                value: level.id,
+                label: level.name,
+              })),
+            ],
+          },
+        ]}
+      />
 
       <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
-        <div>
+        <div className="space-y-4">
           {courses.length === 0 ? (
             <Empty>
               No courses yet. Create a board, a level and a subject first, then
               add the course.
             </Empty>
+          ) : table.rows.length === 0 ? (
+            <Empty>No course matches. Try a different search or filter.</Empty>
           ) : (
             <Card className="overflow-hidden">
               <Table>
@@ -227,13 +220,20 @@ function CoursesTab({
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {courses.map((course) => (
+                  {table.rows.map((course) => (
                     <CourseRow key={course.id} course={course} />
                   ))}
                 </TableBody>
               </Table>
             </Card>
           )}
+          <Pagination
+            page={table.page}
+            pageCount={table.pageCount}
+            totalItems={table.matched}
+            pageSize={25}
+            onPageChange={table.setPage}
+          />
         </div>
 
         <Card className="h-fit p-5">
@@ -251,7 +251,7 @@ function CoursesTab({
 
       {courses.length > 0 ? (
         <p className="text-sm text-muted-foreground">
-          {courses.length} course{courses.length === 1 ? "" : "s"} shown.{" "}
+          {table.matched} course{table.matched === 1 ? "" : "s"} shown.{" "}
           <Link
             href={`/admin/courses/detail?id=${courses[0].id}`}
             className="text-primary"

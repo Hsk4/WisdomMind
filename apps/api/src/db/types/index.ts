@@ -55,7 +55,6 @@ export type StudentProfile = {
 };
 
 export type User = CreatedUpdated & {
-  clerkId: string;
   email: string;
   name: string;
   role: UserRole | null;
@@ -123,6 +122,30 @@ export type ParentInvite = CreatedUpdated & {
   acceptedAt: Date | null;
   attempts: number;
   lastAttemptAt: Date | null;
+  /** The super admin's one test use; the parent's use is `acceptedAt`. */
+  testRedeemedAt: Date | null;
+};
+
+/** The phone a parent account is bound to. One row per parent. */
+export type ParentDevice = {
+  parentId: Id;
+  deviceId: string;
+  deviceLabel: string | null;
+  boundAt: Date;
+  changeReason: string | null;
+  changedAt: Date | null;
+};
+
+/** The single `site_settings` row. */
+export type SiteSettings = {
+  schoolName: string;
+  tagline: string | null;
+  supportEmail: string | null;
+  phone: string | null;
+  address: string | null;
+  /** Data URL: PNG, JPG, WebP or ICO, at most 150 KB. */
+  favicon: string | null;
+  updatedAt: Date;
 };
 
 /** Append-only. `before`/`after` are free-form snapshots, so they stay opaque. */

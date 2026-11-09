@@ -4,7 +4,10 @@ import { useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { PasswordInput } from "@/components/ui/password-input";
+import { errorMessage } from "./api-client";
 import { useAuth } from "./auth-context";
+import { deviceLabel, getDeviceId, isNativeApp } from "./device";
 import { webHomeFor } from "./role-home";
 import { readStoredUser, type StoredUser } from "./session";
 
@@ -60,8 +63,13 @@ export function UserButton() {
 type AuthPayload = {
   ok?: boolean;
   error?: string;
+  /** `DEVICE_LOCKED` when a parent signs in on a second phone. */
+  code?: string;
   data?: { token?: string; user?: StoredUser; home?: string };
 };
+
+/** The shortest reason the API accepts for moving a parent to a new phone. */
+const MIN_DEVICE_REASON = 10;
 
 
 
@@ -74,11 +82,14 @@ function AuthForm({
   endpoint,
   nextStepHref,
   footer,
+  framed = false,
 }: {
   title: string;
   subtitle: string;
   submitLabel: string;
   busyLabel: string;
+  /** Draw the card frame. Off when the page already supplies a sheet. */
+  framed?: boolean;
   fields: {
     name: string;
     label: string;
@@ -96,6 +107,13 @@ function AuthForm({
   const { completeSignIn } = useAuth();
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  /*
+   * A parent account is bound to one phone. When the API refuses a second
+   * phone it answers `DEVICE_LOCKED`; the form then asks why, and resubmits
+   * with the reason. The other phone is signed out by that switch.
+   */
+  const [deviceLocked, setDeviceLocked] = useState(false);
+  const [deviceReason, setDeviceReason] = useState("");
   // Controlled fields: a failed submission must not wipe what was typed.
   const [values, setValues] = useState<Record<string, string>>(() =>
     Object.fromEntries(fields.map((field) => [field.name, ""])),
@@ -106,15 +124,31 @@ function AuthForm({
     if (pending) return;
     setError(null);
 
-    const body = Object.fromEntries(
+    const body: Record<string, unknown> = Object.fromEntries(
       Object.entries(values).map(([key, value]) => [
         key,
         key === "email" ? value.trim().toLowerCase() : value,
       ]),
     );
 
+    /*
+     * Only the native app has a stable device. A browser sign-in neither binds
+     * nor is refused, so the web is never locked out by this rule.
+     */
+    if (endpoint === "sign-in" && isNativeApp()) {
+      body.deviceId = getDeviceId();
+      body.deviceLabel = deviceLabel();
+      if (deviceLocked && deviceReason.trim()) {
+        body.deviceChangeReason = deviceReason.trim();
+      }
+    }
+
     setPending(true);
     try {
+      /*
+       * Raw `fetch`, not `apiFetch`: a failed sign-in is not an expired
+       * session, and `apiFetch` would clear the session and redirect on a 401.
+       */
       const response = await fetch(`${apiBaseUrl()}/auth/${endpoint}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -125,6 +159,13 @@ function AuthForm({
         payload = (await response.json()) as AuthPayload;
       } catch {
         payload = null;
+      }
+
+      if (payload?.code === "DEVICE_LOCKED") {
+        setDeviceLocked(true);
+        setError(null);
+        setPending(false);
+        return;
       }
 
       if (!response.ok || !payload?.ok || !payload.data?.token) {
@@ -147,46 +188,89 @@ function AuthForm({
           : home,
       );
     } catch (caught) {
-      setError(
-        caught instanceof Error
-          ? caught.message
-          : `Unable to ${submitLabel.toLowerCase()}`,
-      );
+      setError(errorMessage(caught, `Unable to ${submitLabel.toLowerCase()}`));
     } finally {
       setPending(false);
     }
   };
 
   return (
-    <div className="w-full max-w-md rounded-2xl border border-border bg-card p-6 shadow-sm">
+    /*
+     * The form never draws its own card. `/sign-up` (centred on grey) is the one
+     * place that needs a frame, because it has no page sheet around it; the
+     * sign-in page already puts this form inside `fastly-sheet`, and a bordered
+     * card inside a bordered sheet read as a box drawn in a box. `framed`
+     * lets that one caller ask for the frame without the other getting it.
+     */
+    <div
+      className={`w-full max-w-md ${framed ? "rounded-2xl border border-border bg-card p-6 shadow-sm" : ""}`}
+    >
       <h1 className="text-2xl font-semibold tracking-tight text-foreground">
         {title}
       </h1>
       <p className="mt-2 text-sm text-muted-foreground">{subtitle}</p>
 
       <form className="mt-6 space-y-4" onSubmit={onSubmit} noValidate>
-        {fields.map((field) => (
-          <label key={field.name} className="block text-sm text-foreground">
-            <span className="mb-1.5 block">{field.label}</span>
-            <input
-              name={field.name}
-              type={field.type}
-              autoComplete={field.autoComplete}
-              placeholder={field.placeholder}
-              required
-              value={values[field.name] ?? ""}
-              onChange={(event) =>
-                setValues((current) => ({
-                  ...current,
-                  [field.name]: event.target.value,
-                }))
-              }
-              aria-invalid={error ? true : undefined}
-              className="w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm outline-none ring-0 placeholder:text-muted-foreground"
-              {...field.extra}
+        {fields.map((field) => {
+          /*
+           * Every role signs in and signs up through this one form, so a
+           * password field gets the show/hide toggle once, here.
+           */
+          const shared = {
+            name: field.name,
+            autoComplete: field.autoComplete,
+            placeholder: field.placeholder,
+            required: true,
+            value: values[field.name] ?? "",
+            onChange: (event: React.ChangeEvent<HTMLInputElement>) =>
+              setValues((current) => ({
+                ...current,
+                [field.name]: event.target.value,
+              })),
+            "aria-invalid": error ? true : undefined,
+            /* 16px on mobile: iOS zooms the page on a smaller focused field. */
+            className:
+              "w-full rounded-lg border border-border bg-background px-3 py-3 text-base outline-none ring-0 placeholder:text-muted-foreground sm:py-2.5 sm:text-sm",
+            ...field.extra,
+          } as const;
+
+          return (
+            <label key={field.name} className="block text-sm text-foreground">
+              <span className="mb-1.5 block">{field.label}</span>
+              {field.type === "password" ? (
+                <PasswordInput {...shared} />
+              ) : (
+                <input {...shared} type={field.type} />
+              )}
+            </label>
+          );
+        })}
+
+        {deviceLocked ? (
+          <div className="space-y-2 rounded-lg border border-status-amber bg-status-amber-soft px-3 py-3 text-sm text-status-amber">
+            <p className="font-medium">
+              This account is already on another phone.
+            </p>
+            <p>
+              Why are you switching? The other phone will be signed out when
+              you continue.
+            </p>
+            <textarea
+              value={deviceReason}
+              onChange={(event) => setDeviceReason(event.target.value)}
+              rows={3}
+              maxLength={300}
+              placeholder="For example: I lost my old phone"
+              aria-label="Why are you switching phones?"
+              className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground outline-none"
             />
-          </label>
-        ))}
+            <p className="text-xs">
+              {deviceReason.trim().length < MIN_DEVICE_REASON
+                ? `At least ${MIN_DEVICE_REASON} characters.`
+                : "Ready."}
+            </p>
+          </div>
+        ) : null}
 
         {error ? (
           <p
@@ -197,8 +281,20 @@ function AuthForm({
           </p>
         ) : null}
 
-        <Button type="submit" disabled={pending} className="w-full">
-          {pending ? busyLabel : submitLabel}
+        <Button
+          type="submit"
+          size="xl"
+          disabled={
+            pending ||
+            (deviceLocked && deviceReason.trim().length < MIN_DEVICE_REASON)
+          }
+          className="w-full"
+        >
+          {pending
+            ? busyLabel
+            : deviceLocked
+              ? "Use this phone"
+              : submitLabel}
         </Button>
       </form>
 
@@ -314,6 +410,8 @@ export function SignUp({
       submitLabel="Create account"
       busyLabel="Creating account..."
       endpoint="sign-up"
+      /* `/sign-up` centres this on a bare grey page, so it needs the frame. */
+      framed
       /*
        * A brand-new role-less account lands on `/pending` (the API's `home`).
        * Carrying the chosen door through tells that page which application the

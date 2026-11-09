@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { api } from "@/lib/api-client";
+import { api, errorMessage } from "@/lib/api-client";
 
 /**
  * Mutation forms take `onDone` from their page, which calls its own `reload`.
@@ -43,7 +43,7 @@ export function RequestTeacherForm({
               setMessage("Request sent.");
               await refresh();
             } catch (error) {
-              setMessage(error instanceof Error ? error.message : "Could not send request");
+              setMessage(errorMessage(error, "Could not send request"));
             }
           });
         }}
@@ -99,7 +99,7 @@ export function SubmitAssignmentForm({
             setOpen(false);
             await refresh();
           } catch (error) {
-            setMessage(error instanceof Error ? error.message : "Could not submit");
+            setMessage(errorMessage(error, "Could not submit"));
           }
         });
       }}
@@ -170,7 +170,7 @@ export function CreateParentLinkForm({ onDone }: { onDone?: () => void }) {
         <div className="flex flex-wrap gap-2">
           <button
             type="button"
-            className="border border-border bg-card text-foreground shadow-sm hover:bg-secondary"
+            className="btn btn-secondary"
             onClick={async () => {
               try {
                 await navigator.clipboard.writeText(issued.code);
@@ -217,7 +217,7 @@ export function CreateParentLinkForm({ onDone }: { onDone?: () => void }) {
             );
             setIssued(issuedCode);
           } catch (error) {
-            setError(error instanceof Error ? error.message : "Could not create a link code");
+            setError(errorMessage(error, "Could not create a link code"));
           }
         });
       }}

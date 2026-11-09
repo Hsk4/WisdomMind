@@ -1,6 +1,8 @@
 "use client";
 
+import { useState } from "react";
 import { useAsync } from "@/lib/use-async";
+import { useTableControls } from "@/lib/use-table-controls";
 import {
   Table,
   TableHeader,
@@ -11,6 +13,9 @@ import {
 } from "@/components/ui/table";
 import { PageHeader, Card, Empty } from "@/components/ui/nila";
 import { ActionForm } from "@/components/ui/action-form";
+import { ListToolbar } from "@/components/shared/list-toolbar";
+import { Pagination } from "@/components/shared/pagination";
+import { SearchSelect } from "@/components/ui/search-select";
 import { api } from "@/lib/api-client";
 
 type MaterialRow = {
@@ -35,6 +40,15 @@ export default function AdminMaterialsPage() {
   );
   const materials = materialsQuery.data ?? [];
   const courses = coursesQuery.data ?? [];
+  // Controlled so the searchable course picker can carry the id into `FormData`.
+  const [courseId, setCourseId] = useState("");
+
+  // The API returns every material; search and paging happen here.
+  const table = useTableControls(materials, {
+    searchText: (material) =>
+      `${material.title} ${material.courseLabel} ${material.type} ${material.uploadedBy}`,
+    pageSize: 25,
+  });
 
   return (
     <div>
@@ -44,9 +58,18 @@ export default function AdminMaterialsPage() {
       />
 
       <div className="grid gap-6 lg:grid-cols-[1fr_340px]">
-        <div>
+        <div className="space-y-4">
+          <ListToolbar
+            searchPlaceholder="Search title, course or type"
+            searchValue={table.searchInput}
+            onSearchChange={table.setSearchInput}
+            hasActiveFilters={table.hasActiveFilters}
+            onClear={table.clear}
+          />
           {materials.length === 0 ? (
             <Empty>No materials added yet.</Empty>
+          ) : table.rows.length === 0 ? (
+            <Empty>No material matches. Try a different search.</Empty>
           ) : (
             <Card className="overflow-hidden">
               <Table>
@@ -59,7 +82,7 @@ export default function AdminMaterialsPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {materials.map((mat) => (
+                  {table.rows.map((mat) => (
                     <TableRow key={mat.id}>
                       <TableCell className="font-medium">{mat.title}</TableCell>
                       <TableCell>{mat.courseLabel}</TableCell>
@@ -73,6 +96,13 @@ export default function AdminMaterialsPage() {
               </Table>
             </Card>
           )}
+          <Pagination
+            page={table.page}
+            pageCount={table.pageCount}
+            totalItems={table.matched}
+            pageSize={25}
+            onPageChange={table.setPage}
+          />
         </div>
 
         <Card className="h-fit p-5">
@@ -101,18 +131,19 @@ export default function AdminMaterialsPage() {
             >
               <div>
                 <label className="label" htmlFor="material-course">Course</label>
-                <select
+                <SearchSelect
                   id="material-course"
                   name="courseId"
-                  className="input"
-                  defaultValue=""
+                  options={courses.map((course) => ({
+                    value: course.id,
+                    label: course.label,
+                  }))}
+                  value={courseId}
+                  onChange={setCourseId}
+                  placeholder="Search courses"
+                  emptyLabel="Choose a course"
                   required
-                >
-                  <option value="" disabled>Choose a course</option>
-                  {courses.map((course) => (
-                    <option key={course.id} value={course.id}>{course.label}</option>
-                  ))}
-                </select>
+                />
               </div>
               <div>
                 <label className="label" htmlFor="material-title">Title</label>

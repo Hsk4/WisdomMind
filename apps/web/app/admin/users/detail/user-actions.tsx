@@ -4,6 +4,7 @@ import { useState } from "react";
 import { ActionButton } from "@/components/ui/action-form";
 import { Card } from "@/components/ui/nila";
 import { api } from "@/lib/api-client";
+import { useAuth } from "@/lib/auth-context";
 
 const ROLES = ["student", "teacher", "parent", "admin"] as const;
 
@@ -19,6 +20,7 @@ export function UserActions({
   /** The detail page reloads itself after a change. */
   onDone?: () => void;
 }) {
+  const { user: me } = useAuth();
   const [nextRole, setNextRole] = useState<string>(role ?? "student");
   const [reason, setReason] = useState("");
 
@@ -115,6 +117,31 @@ export function UserActions({
           </ActionButton>
         </div>
       </div>
+
+      {/*
+       * One phone per parent. Unlocking clears the binding and signs the old
+       * phone out, so the next sign-in binds whatever phone it comes from.
+       */}
+      {role === "parent" && me ? (
+        <div className="border-t border-border pt-4">
+          <h2 className="text-sm font-semibold text-foreground">Phone</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Unlock the phone this parent is bound to. The current phone is
+            signed out, and the next sign-in binds the new one.
+          </p>
+          <div className="mt-3">
+            <ActionButton
+              action={async () => {
+                await api.post(`/admin/users/${userId}/device/reset`);
+                return done();
+              }}
+              confirm="Unlock this parent's phone? The current phone is signed out."
+            >
+              Unlock phone
+            </ActionButton>
+          </div>
+        </div>
+      ) : null}
     </Card>
   );
 }

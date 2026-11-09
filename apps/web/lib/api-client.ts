@@ -37,7 +37,7 @@ if (process.env.NODE_ENV === "production" && BASE_URL === DEV_API_URL) {
  * The callback does no navigation itself; the provider clears the session and
  * the guards redirect on the next render.
  */
-type UnauthorizedHandler = () => void;
+type UnauthorizedHandler = (reason: string) => void;
 
 let onUnauthorized: UnauthorizedHandler | null = null;
 let notifying = false;
@@ -46,11 +46,15 @@ export function setUnauthorizedHandler(handler: UnauthorizedHandler | null) {
   onUnauthorized = handler;
 }
 
-export function notifyUnauthorized() {
+/**
+ * `reason` is shown on the sign-in page. A 401 with no message is the ordinary
+ * "your session ended"; the device rule and a password change say so.
+ */
+export function notifyUnauthorized(reason = "session_expired") {
   if (notifying) return;
   notifying = true;
   try {
-    onUnauthorized?.();
+    onUnauthorized?.(reason);
   } finally {
     // Released on the next tick so a burst of parallel 401s signs out once.
     setTimeout(() => {
@@ -61,15 +65,68 @@ export function notifyUnauthorized() {
 
 export class ApiError extends Error {
   readonly status: number;
+  /** A machine-readable reason from the API (`DEVICE_LOCKED`, ...). */
+  readonly code?: string;
 
-  constructor(status: number, message: string) {
+  constructor(status: number, message: string, code?: string) {
     super(message);
     this.name = "ApiError";
     this.status = status;
+    this.code = code;
   }
 }
 
+/**
+ * Anything that looks like a database or runtime failure is replaced before it
+ * reaches a screen. A Drizzle error reads "Failed query: select ... from ...",
+ * which tells a parent nothing and tells an attacker plenty.
+ */
+const LEAKY =
+  /failed query|select .* from|insert into|update .* set|violates|syntax error|ECONN|ETIMEDOUT|ENOTFOUND|duplicate key|relation "|column "/i;
 
+const FRIENDLY: Record<number, string> = {
+  0: "We could not reach the school server. Check your connection and try again.",
+  400: "Some of the details were not valid. Check the form and try again.",
+  401: "Your session has ended. Please sign in again.",
+  403: "You do not have access to this.",
+  404: "We could not find that. It may have been removed.",
+  409: "That change conflicts with something else. Refresh and try again.",
+  413: "That file is too large.",
+  429: "Too many attempts. Wait a moment and try again.",
+  500: "Something went wrong on our side. Please try again.",
+  502: "The school server is not responding. Try again in a moment.",
+  503: "The school server is not responding. Try again in a moment.",
+};
+
+/** A message safe to show a person, whatever the API or the network said. */
+export function friendlyMessage(
+  status: number,
+  message?: string | null,
+): string {
+  const text = (message ?? "").trim();
+  if (!text || LEAKY.test(text)) {
+    return FRIENDLY[status] ?? "Something went wrong. Please try again.";
+  }
+  return text;
+}
+
+/**
+ * A thrown value as a sentence a person can read.
+ *
+ * Every screen that catches an error should show this rather than
+ * `error.message`: a `TypeError` from a failed fetch, a Drizzle error that
+ * slipped through, or a stack-shaped string all become the same friendly line
+ * chosen by status. `ApiError` already carries a safe message, so it passes
+ * through unchanged.
+ */
+export function errorMessage(error: unknown, fallback = "Something went wrong. Please try again."): string {
+  if (error instanceof ApiError) return error.message;
+  if (error instanceof Error) {
+    const status = (error as { status?: number }).status ?? 0;
+    return friendlyMessage(status, error.message);
+  }
+  return fallback;
+}
 
 type RequestOptions = {
   method?: "GET" | "POST" | "PATCH" | "DELETE";
@@ -134,12 +191,16 @@ export async function apiFetch<T>(
   }
 
   if (!response.ok || !payload || payload.ok === false) {
-    const message =
-      payload && payload.ok === false ? payload.error : "Something went wrong";
+    const raw = payload && payload.ok === false ? payload.error : null;
+    const code = payload && payload.ok === false ? payload.code : undefined;
     // A 401 means the stored token is no longer usable. A 403 is a policy
     // answer (wrong role, pending) and must not sign the user out.
     if (response.status === 401) notifyUnauthorized();
-    throw new ApiError(response.status, message);
+    throw new ApiError(
+      response.status,
+      friendlyMessage(response.status, raw),
+      code,
+    );
   }
 
   return payload.data;

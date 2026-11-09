@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { api } from "./api-client";
 
 /**
  * The two hooks every screen needs. This is deliberately the whole data layer:
@@ -26,8 +25,6 @@ export type AsyncResult<T> = {
 type QueryOptions = {
   /** `false` skips the request entirely (id is empty, no session, ...). */
   enabled?: boolean;
-  /** Milliseconds between background refreshes. Omitted means never. */
-  interval?: number;
 };
 
 /**
@@ -39,7 +36,7 @@ type QueryOptions = {
 export function useAsync<T>(
   fetcher: () => Promise<T>,
   deps: readonly unknown[],
-  { enabled = true, interval }: QueryOptions = {},
+  { enabled = true }: QueryOptions = {},
 ): AsyncResult<T> {
   const [data, setData] = useState<T | undefined>(undefined);
   const [error, setError] = useState<Error | null>(null);
@@ -86,35 +83,7 @@ export function useAsync<T>(
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [enabled, runId, ...deps]);
 
-  useEffect(() => {
-    if (!enabled || !interval) return;
-    const id = window.setInterval(() => {
-      fetcher()
-        .then((value) => {
-          setData(value);
-          setError(null);
-        })
-        .catch((caught: unknown) => {
-          setError(caught instanceof Error ? caught : new Error(String(caught)));
-        });
-    }, interval);
-    return () => window.clearInterval(id);
-    // Restart the timer when the query key changes, not on every render.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [enabled, interval, runId]);
-
   return { data, error, loading, fetched, reload };
-}
-
-/** Shorthand: `useApi("/admin/users", { q })`. */
-export function useApi<T>(
-  path: string,
-  query?: Record<string, string | number | undefined | null>,
-  options: QueryOptions & { deps?: readonly unknown[] } = {},
-): AsyncResult<T> {
-  const { deps = [], ...rest } = options;
-  const key = `${path}?${JSON.stringify(query ?? {})}`;
-  return useAsync<T>(() => api.get<T>(path, query), [key, ...deps], rest);
 }
 
 export type ActionResult = {

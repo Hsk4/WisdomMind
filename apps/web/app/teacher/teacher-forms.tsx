@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { api } from "@/lib/api-client";
+import { api, errorMessage } from "@/lib/api-client";
 
 type ClassOption = {
   id: string;
@@ -68,7 +68,7 @@ export function DecisionForm({
         setMessage(decision === "accept" ? "Accepted." : "Declined.");
         await refresh();
       } catch (error) {
-        setMessage(error instanceof Error ? error.message : "Could not decide");
+        setMessage(errorMessage(error, "Could not decide"));
       }
     });
   }
@@ -161,9 +161,7 @@ export function ClassForm({
             setMessage("Class created.");
             await refresh();
           } catch (error) {
-            setMessage(
-              error instanceof Error ? error.message : "Could not create class",
-            );
+            setMessage(errorMessage(error, "Could not create class"));
           }
         });
       }}
@@ -320,9 +318,7 @@ export function AssignmentForm({
             setMessage("Assignment published.");
             await refresh();
           } catch (error) {
-            setMessage(
-              error instanceof Error ? error.message : "Could not publish",
-            );
+            setMessage(errorMessage(error, "Could not publish"));
           }
         });
       }}
@@ -431,9 +427,7 @@ export function GradeForm({
             setMessage("Saved.");
             await refresh();
           } catch (error) {
-            setMessage(
-              error instanceof Error ? error.message : "Could not grade",
-            );
+            setMessage(errorMessage(error, "Could not grade"));
           }
         });
       }}
@@ -467,7 +461,7 @@ export function GradeForm({
       </div>
       <button
         type="submit"
-        className="border border-border bg-card text-foreground shadow-sm hover:bg-secondary"
+        className="btn btn-secondary"
         disabled={pending}
       >
         {pending ? "Saving..." : score === null ? "Grade" : "Update"}
@@ -535,9 +529,7 @@ export function AttendanceForm({
             await refresh();
           } catch (error) {
             setMessage(
-              error instanceof Error
-                ? error.message
-                : "Could not save attendance",
+              errorMessage(error, "Could not save attendance"),
             );
           }
         });
@@ -654,9 +646,7 @@ export function ConfirmMeetingForm({
             setMessage("Confirmed.");
             await refresh();
           } catch (error) {
-            setMessage(
-              error instanceof Error ? error.message : "Could not confirm",
-            );
+            setMessage(errorMessage(error, "Could not confirm"));
           }
         });
       }}

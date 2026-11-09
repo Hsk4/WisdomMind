@@ -173,6 +173,47 @@ export const userActionSchema = z.object({
   userId: recordIdSchema,
 });
 
+/**
+ * `POST /admin/admins` — a super admin creates an admin account.
+ *
+ * The password is set here, not emailed: the office hands it over in person.
+ * It follows the same 12-character floor as sign-up.
+ */
+export const createAdminSchema = z.object({
+  name: nameSchema,
+  email: emailSchema,
+  password: z
+    .string()
+    .min(12, "Use at least 12 characters")
+    .max(128, "Keep the password under 128 characters"),
+});
+
+/**
+ * `PATCH /admin/site-settings` — the school's identity.
+ *
+ * `favicon` is a data URL. The 150 KB cap is checked on the string length, so
+ * a client that skips the canvas resize still cannot store a 2 MB photo.
+ */
+export const siteSettingsSchema = z.object({
+  schoolName: z.string().trim().min(1, "Give the school a name").max(80).optional(),
+  tagline: z.string().trim().max(160).nullish(),
+  supportEmail: z
+    .union([emailSchema, z.literal("")])
+    .nullish()
+    .transform((v) => v || null),
+  phone: z.string().trim().max(32).nullish().transform((v) => v || null),
+  address: z.string().trim().max(300).nullish().transform((v) => v || null),
+  favicon: z
+    .string()
+    .max(150 * 1024, "That image is too large. Use one under 150 KB.")
+    .regex(
+      /^data:image\/(png|jpeg|jpg|webp|x-icon|vnd\.microsoft\.icon);base64,[A-Za-z0-9+/=]+$/,
+      "Use a PNG, JPG, WebP or ICO image",
+    )
+    .nullish()
+    .transform((v) => v || null),
+});
+
 export const requestDecisionSchema = z.object({
   requestId: recordIdSchema,
   decision: z.enum(["approve", "reject"]),

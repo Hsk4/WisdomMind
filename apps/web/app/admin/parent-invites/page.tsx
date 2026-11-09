@@ -1,6 +1,7 @@
 "use client";
 
 import { useAsync } from "@/lib/use-async";
+import { useTableControls } from "@/lib/use-table-controls";
 import {
   Table,
   TableHeader,
@@ -10,6 +11,8 @@ import {
   TableCell,
 } from "@/components/ui/table";
 import { PageHeader, Card, Empty, formatDay } from "@/components/ui/nila";
+import { ListToolbar } from "@/components/shared/list-toolbar";
+import { Pagination } from "@/components/shared/pagination";
 import { api } from "@/lib/api-client";
 import { InviteActions } from "./invite-actions";
 import { LinkGuardianForm } from "./link-form";
@@ -24,6 +27,8 @@ type InviteRow = {
   state: string;
   createdAt: string;
   acceptedAt: string | null;
+  /** When the office spent its one test use of the code, if it has. */
+  testRedeemedAt: string | null;
 };
 
 type Options = {
@@ -43,6 +48,15 @@ export default function AdminParentInvitesPage() {
 
   const invites = invitesQuery.data ?? [];
   const options = optionsQuery.data ?? { parents: [], students: [] };
+
+  // The API returns every code; search, state filter and paging happen here.
+  const table = useTableControls(invites, {
+    searchText: (invite) =>
+      `${invite.parentName} ${invite.parentEmail} ${invite.studentName} ${invite.studentEmail} ${invite.code}`,
+    filterIds: ["state"],
+    filters: { state: (invite, value) => invite.state === value },
+    pageSize: 25,
+  });
 
   return (
     <>
@@ -67,8 +81,33 @@ export default function AdminParentInvitesPage() {
         </div>
       </Card>
 
+      <ListToolbar
+        searchPlaceholder="Search parent, student or code"
+        searchValue={table.searchInput}
+        onSearchChange={table.setSearchInput}
+        onFilterChange={table.setFilter}
+        hasActiveFilters={table.hasActiveFilters}
+        onClear={table.clear}
+        filters={[
+          {
+            id: "state",
+            label: "State",
+            value: table.filters.state ?? "",
+            options: [
+              { value: "", label: "Any state" },
+              { value: "sent", label: "Sent" },
+              { value: "accepted", label: "Accepted" },
+              { value: "revoked", label: "Revoked" },
+              { value: "expired", label: "Expired" },
+            ],
+          },
+        ]}
+      />
+
       {invites.length === 0 ? (
         <Empty>No link codes yet.</Empty>
+      ) : table.rows.length === 0 ? (
+        <Empty>No code matches. Try a different search or filter.</Empty>
       ) : (
         <Card className="overflow-hidden">
           <Table>
@@ -79,12 +118,13 @@ export default function AdminParentInvitesPage() {
                 <TableHead>Code</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Created</TableHead>
-                <TableHead>Accepted</TableHead>
+                <TableHead className="hidden md:table-cell">Accepted</TableHead>
+                <TableHead>Test use</TableHead>
                 <TableHead />
               </TableRow>
             </TableHeader>
             <TableBody>
-              {invites.map((invite) => (
+              {table.rows.map((invite) => (
                 <TableRow key={invite.id}>
                   <TableCell>
                     <p className="font-medium">{invite.parentName}</p>
@@ -119,8 +159,17 @@ export default function AdminParentInvitesPage() {
                   <TableCell className="text-xs text-muted-foreground">
                     {formatDay(invite.createdAt)}
                   </TableCell>
-                  <TableCell className="text-xs text-muted-foreground">
+                  <TableCell className="hidden text-xs text-muted-foreground md:table-cell">
                     {invite.acceptedAt ? formatDay(invite.acceptedAt) : "-"}
+                  </TableCell>
+                  <TableCell className="text-xs">
+                    {invite.testRedeemedAt ? (
+                      <span className="text-muted-foreground">
+                        Used {formatDay(invite.testRedeemedAt)}
+                      </span>
+                    ) : (
+                      <span className="text-status-green">Available</span>
+                    )}
                   </TableCell>
                   <TableCell className="text-end">
                     {invite.state === "sent" && (
@@ -136,6 +185,13 @@ export default function AdminParentInvitesPage() {
           </Table>
         </Card>
       )}
+      <Pagination
+        page={table.page}
+        pageCount={table.pageCount}
+        totalItems={table.matched}
+        pageSize={25}
+        onPageChange={table.setPage}
+      />
     </>
   );
 }

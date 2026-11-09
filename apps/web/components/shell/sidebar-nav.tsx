@@ -11,7 +11,7 @@ import {
   type NavBadgeKey,
   type NavGroup,
 } from "@/components/shell/nav-config";
-import { SCHOOL_NAME } from "@/lib/school";
+import { useSchoolName } from "@/lib/site-settings";
 import { cn } from "@/lib/utils";
 
 export interface SidebarNavProps {
@@ -40,6 +40,7 @@ export function SidebarNav({
   className,
 }: SidebarNavProps) {
   const pathname = usePathname();
+  const schoolName = useSchoolName();
   const label = PANEL_LABEL[panel];
 
   return (
@@ -132,7 +133,7 @@ export function SidebarNav({
          * reads as a broken layout rather than a scrollable one.
          */}
         <p className="mt-auto shrink-0 border-t-[1.5px] border-on-navy-line px-3 pt-4 pb-1 text-[11px] leading-relaxed text-white/56">
-          {SCHOOL_NAME}
+          {schoolName}
         </p>
       </div>
     </div>

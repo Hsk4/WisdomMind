@@ -26,12 +26,17 @@ const buttonVariants = cva(
         link: "text-primary underline-offset-4 hover:underline",
       },
       size: {
-        default: "h-10 px-4 py-2",
-        sm: "h-9 rounded-md px-3 text-xs",
+        /*
+         * 44px on a phone, 40px from `sm`: the brand kit's minimum touch
+         * height is 44, and a 40px button is a miss on a thumb. The desktop
+         * density is unchanged.
+         */
+        default: "h-11 px-4 py-2 sm:h-10",
+        sm: "h-10 rounded-md px-3 text-xs sm:h-9",
         lg: "h-11 rounded-xl px-6",
         /* 48px: the brand kit's minimum touch height for a primary action. */
         xl: "h-12 rounded-xl px-6",
-        icon: "h-10 w-10",
+        icon: "h-11 w-11 sm:h-10 sm:w-10",
       },
     },
     defaultVariants: {

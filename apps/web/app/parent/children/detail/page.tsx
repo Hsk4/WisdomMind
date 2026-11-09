@@ -13,7 +13,7 @@ import {
   Stat,
   formatDay,
 } from "@/components/ui/nila";
-import { api } from "@/lib/api-client";
+import { api, errorMessage } from "@/lib/api-client";
 import { RescheduleMeetingForm } from "../../parent-forms";
 import { InlineLoading } from "@/components/shared/skeleton";
 
@@ -49,7 +49,11 @@ function DetailById() {
   if (query.loading)
     return <InlineLoading />;
   if (query.error)
-    return <p className="p-6 text-sm text-status-red">{query.error.message}</p>;
+    return (
+      <p className="p-6 text-sm text-status-red">
+        {errorMessage(query.error, "We could not load this child.")}
+      </p>
+    );
   const child = query.data;
   if (!child) return null;
 

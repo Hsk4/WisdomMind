@@ -22,6 +22,7 @@ export default function TeacherLayout({
       <PanelShell
         panel="teacher"
         groups={TEACHER_NAV_GROUPS}
+        mobile="bottom-tabs"
         user={{
           name: user?.name ?? "",
           email: user?.email ?? "",

@@ -80,8 +80,7 @@ The centre of the system. One row per person, whatever their role.
 
 | Field                  | Meaning                                                                                                                                  |
 | ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
-| `id`                   | UUID primary key                                                                                                                         |
-| `clerk_id`             | A unique identity string. **Historical name** — it is generated locally now (`local-<email>-<timestamp>`), not by any external provider. |
+| `id`                   | UUID primary key. This is the token subject (`sub`).                                                                                     |
 | `email`                | Lowercase, unique (enforced by a CHECK)                                                                                                  |
 | `password_hash`        | scrypt hash. Null only for accounts created before local auth.                                                                           |
 | `role`                 | `super_admin`, `admin`, `teacher`, `student`, `parent`, or null                                                                          |
@@ -95,9 +94,9 @@ The centre of the system. One row per person, whatever their role.
 (`session_version`).
 **Who reads it:** the owner (`/me`), admins (user list).
 
-> **Why `clerk_id` is still called that:** the column predates local
-> authentication. Renaming it needs a migration and touches every query, so it
-> was left alone. Treat it as "the account's stable identity string".
+> **`clerk_id` is gone.** Migration `0004` dropped it: the token's `sub` is the
+> user id now, so every account signed in before that deploy was signed out
+> once. There is no external identity provider.
 
 ### `access_requests` — the approval queue
 

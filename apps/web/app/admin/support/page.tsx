@@ -1,6 +1,7 @@
 "use client";
 
 import { useAsync } from "@/lib/use-async";
+import { useTableControls } from "@/lib/use-table-controls";
 import {
   PageHeader,
   Card,
@@ -13,6 +14,8 @@ import {
   EscalateTicketButton,
   TicketReplyForm,
 } from "@/components/support/support-forms";
+import { ListToolbar } from "@/components/shared/list-toolbar";
+import { Pagination } from "@/components/shared/pagination";
 import { api } from "@/lib/api-client";
 
 type TicketRow = {
@@ -29,6 +32,17 @@ export default function AdminSupportPage() {
   const ticketsQuery = useAsync(() => api.get<TicketRow[]>("/support/tickets"), []);
   const tickets = ticketsQuery.data ?? [];
 
+  // The API returns the whole queue; search, state filter and paging happen here.
+  const table = useTableControls(tickets, {
+    searchText: (ticket) =>
+      `${ticket.subject} ${ticket.createdBy?.name ?? ""} ${ticket.messages
+        .map((message) => message.text)
+        .join(" ")}`,
+    filterIds: ["state"],
+    filters: { state: (ticket, value) => ticket.state === value },
+    pageSize: 20,
+  });
+
   return (
     <div>
       <PageHeader
@@ -36,11 +50,34 @@ export default function AdminSupportPage() {
         description="Student and teacher support requests. Escalate to the super admin if needed."
       />
 
+      <ListToolbar
+        searchPlaceholder="Search subject, person or message"
+        searchValue={table.searchInput}
+        onSearchChange={table.setSearchInput}
+        onFilterChange={table.setFilter}
+        hasActiveFilters={table.hasActiveFilters}
+        onClear={table.clear}
+        filters={[
+          {
+            id: "state",
+            label: "State",
+            value: table.filters.state ?? "",
+            options: [
+              { value: "", label: "Any state" },
+              { value: "open", label: "Open" },
+              { value: "escalated", label: "Escalated" },
+              { value: "closed", label: "Closed" },
+            ],
+          },
+        ]}
+      />
       {tickets.length === 0 ? (
         <Empty>No open tickets.</Empty>
+      ) : table.rows.length === 0 ? (
+        <Empty>No ticket matches. Try a different search or filter.</Empty>
       ) : (
         <div className="space-y-4">
-          {tickets.map((ticket) => (
+          {table.rows.map((ticket) => (
             <Card key={ticket.id} className="p-4">
               <div className="flex flex-wrap items-start justify-between gap-2">
                 <div>
@@ -74,6 +111,13 @@ export default function AdminSupportPage() {
           ))}
         </div>
       )}
+      <Pagination
+        page={table.page}
+        pageCount={table.pageCount}
+        totalItems={table.matched}
+        pageSize={20}
+        onPageChange={table.setPage}
+      />
     </div>
   );
 }

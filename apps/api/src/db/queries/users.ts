@@ -5,7 +5,6 @@ import {
   eq,
   ilike,
   inArray,
-  notInArray,
   or,
   type SQL,
 } from "drizzle-orm";
@@ -28,7 +27,6 @@ type UserRow = typeof users.$inferSelect;
 export function toUser(row: UserRow): User {
   return {
     id: row.id,
-    clerkId: row.clerkId,
     email: row.email,
     name: row.name,
     role: row.role,
@@ -49,27 +47,15 @@ export function toStudent(row: UserRow): Student {
   };
 }
 
-export async function findUserByClerkId(
-  clerkId: string,
-  conn: Tx | typeof db = db,
-): Promise<Student | null> {
-  const [row] = await conn
-    .select()
-    .from(users)
-    .where(eq(users.clerkId, clerkId))
-    .limit(1);
-  return row ? toStudent(row) : null;
-}
-
 /** Authentication-only lookup; includes the DB-side session version. */
-export async function findUserAuthByClerkId(
-  clerkId: string,
+export async function findUserAuthById(
+  id: Id,
   conn: Tx | typeof db = db,
 ): Promise<{ user: Student; sessionVersion: number } | null> {
   const [row] = await conn
     .select()
     .from(users)
-    .where(eq(users.clerkId, clerkId))
+    .where(eq(users.id, id))
     .limit(1);
   return row ? { user: toStudent(row), sessionVersion: row.sessionVersion } : null;
 }
@@ -145,7 +131,7 @@ export async function listUsersByStatus(
  * 200 and would report the page size, not the total.
  */
 export async function countUsers(
-  filter: { status?: string; role?: string; q?: string } = {},
+  filter: UserListFilter = {},
   conn: Tx | typeof db = db,
 ): Promise<number> {
   const where = userFilter(filter);
@@ -156,11 +142,21 @@ export async function countUsers(
   return row?.value ?? 0;
 }
 
+export type UserListFilter = {
+  status?: string;
+  role?: string;
+  q?: string;
+  boardId?: string;
+  levelId?: string;
+};
+
 /** Shared WHERE fragments so the list and the count cannot drift apart. */
-function userFilter(filter: { status?: string; role?: string; q?: string }): SQL[] {
+function userFilter(filter: UserListFilter): SQL[] {
   return [
     filter.status ? eq(users.status, filter.status as UserStatus) : undefined,
     filter.role ? eq(users.role, filter.role as UserRole) : undefined,
+    filter.boardId ? eq(users.boardId, filter.boardId) : undefined,
+    filter.levelId ? eq(users.levelId, filter.levelId) : undefined,
     // Was a case-insensitive RegExp in Mongo; `ilike` is the SQL equivalent and
     // needs no backslash-escaping, which the Mongo version had to do by hand.
     filter.q
@@ -173,7 +169,7 @@ function userFilter(filter: { status?: string; role?: string; q?: string }): SQL
 }
 
 export async function listAllUsers(
-  filter: { status?: string; role?: string; q?: string } = {},
+  filter: UserListFilter = {},
   limit = 200,
   conn: Tx | typeof db = db,
 ): Promise<Student[]> {
@@ -199,7 +195,6 @@ export async function listUsersByIds(
 
 export async function createUser(
   input: {
-    clerkId: string;
     email: string;
     name: string;
     role?: UserRole | null;
@@ -214,7 +209,6 @@ export async function createUser(
   const [row] = await conn
     .insert(users)
     .values({
-      clerkId: input.clerkId,
       // The column has a CHECK that it is lowercase; normalize here so the
       // constraint is a backstop rather than a surprise 23514.
       email: input.email.trim().toLowerCase(),
@@ -256,22 +250,4 @@ export async function updateUser(
     .where(eq(users.id, id));
 }
 
-export async function deleteUsersNotIn(
-  clerkIds: string[],
-  conn: Tx | typeof db = db,
-): Promise<Id[]> {
-  const doomed = await conn
-    .select({ id: users.id })
-    .from(users)
-    .where(
-      clerkIds.length === 0 ? undefined : notInArray(users.clerkId, clerkIds),
-    );
-  if (doomed.length === 0) return [];
-  await conn.delete(users).where(
-    inArray(
-      users.id,
-      doomed.map((row) => row.id),
-    ),
-  );
-  return doomed.map((row) => row.id);
-}
+

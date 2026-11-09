@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { api } from "@/lib/api-client";
+import { api, errorMessage } from "@/lib/api-client";
 
 /** Opens a support ticket for the signed-in student. */
 export function NewTicketForm({ onDone }: { onDone?: () => void }) {
@@ -26,11 +26,7 @@ export function NewTicketForm({ onDone }: { onDone?: () => void }) {
             setMessage("Ticket opened. The office will reply here.");
             onDone?.();
           } catch (submissionError) {
-            setError(
-              submissionError instanceof Error
-                ? submissionError.message
-                : "Could not open a ticket",
-            );
+            setError(errorMessage(submissionError, "Could not open a ticket"));
           }
         });
       }}

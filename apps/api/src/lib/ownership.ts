@@ -22,9 +22,7 @@ export async function assertTeacherOf(
 ): Promise<void> {
   const enrollment = await findActiveEnrollmentBetween(teacherId, studentId);
   if (!enrollment) {
-    throw forbidden(
-      "Unauthorized: no active enrollment for this teacher and student",
-    );
+    throw forbidden("This student is not in one of your classes.");
   }
 }
 
@@ -34,7 +32,7 @@ export async function assertParentOf(
   studentId: string,
 ): Promise<void> {
   if (!(await isGuardianOf(parentId, studentId))) {
-    throw forbidden("Unauthorized: student not linked to this parent");
+    throw forbidden("This student is not linked to your account.");
   }
 }
 
@@ -57,13 +55,13 @@ export async function assertEnrollmentAccess(
   ) {
     return enrollment;
   }
-  throw forbidden("Unauthorized: no access to this enrollment");
+  throw forbidden("You do not have access to this enrollment.");
 }
 
 /** A student reads only their own records; nobody passes another student's id. */
 export function assertSelf(actor: GateUser, studentId: string): void {
   if (actor.role !== "student" || actor.id !== studentId) {
-    throw forbidden("Unauthorized");
+    throw forbidden("You can only view your own records.");
   }
 }
 
@@ -81,8 +79,8 @@ export async function assertCanReadStudent(
     return;
   throw forbidden(
     actor.role === "parent"
-      ? "Unauthorized: student not linked to this parent"
-      : "Unauthorized",
+      ? "This student is not linked to your account."
+      : "You do not have access to this student's records.",
   );
 }
 

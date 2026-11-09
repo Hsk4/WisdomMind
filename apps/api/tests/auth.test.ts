@@ -107,21 +107,20 @@ describe("authentication", () => {
   });
 });
 
-describe("mirror adoption", () => {
-  it("treats a verified token with no account row as pending", async () => {
-    // The verifier accepts the token but no `users` row exists for it. Missing
-    // metadata is pending: /me answers with the pending home, and no panel is
-    // reachable.
+describe("deleted accounts", () => {
+  it("refuses a verified token whose account row is gone", async () => {
+    // The token's `sub` is the user id. No row means the account was deleted
+    // (or the token predates the switch), so the session is over — a deleted
+    // account must not keep working until its token expires.
     const res = await request(app).get("/api/v1/me").set(authHeader("ghost_1"));
-    expect(res.status).toBe(200);
-    expect(res.body.data).toMatchObject({ status: "pending", role: null, home: "/pending" });
+    expect(res.status).toBe(401);
 
     const blocked = await request(app)
       .get("/api/v1/student/courses")
       .set(authHeader("ghost_1"));
-    expect(blocked.status).toBe(403);
+    expect(blocked.status).toBe(401);
 
-    const rows = await db.select().from(users).where(eq(users.clerkId, "ghost_1"));
+    const rows = await db.select().from(users).where(eq(users.id, "ghost_1"));
     expect(rows).toHaveLength(0);
   });
 });
@@ -140,7 +139,7 @@ describe("local JWT auth", () => {
 
     const session = await localTokenVerifier()(token);
     expect(session).toMatchObject({
-      clerkId: "local-admin-1",
+      userId: "local-admin-1",
       metadata: { role: "super_admin", status: "active", onboarded: true },
       sessionVersion: 7,
     });
@@ -155,7 +154,7 @@ describe("local JWT auth", () => {
     await db
       .update(users)
       .set({ sessionVersion: 1 })
-      .where(eq(users.clerkId, "session-reset-user"));
+      .where(eq(users.id, "session-reset-user"));
 
     try {
       const jwtApp = createApp({ verifyToken: localTokenVerifier() });

@@ -17,9 +17,13 @@ function Body() {
     params.get("role") === "teacher" ? "teacher" : "student";
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-surface px-4">
+    /*
+     * `main`, like every other page: a screen reader lands on a landmark, and
+     * a skip link has something to skip to. It was the only page without one.
+     */
+    <main className="flex min-h-screen items-center justify-center bg-surface px-4">
       <SignUp signInUrl="/sign-in" fallbackRedirectUrl="/" role={role} />
-    </div>
+    </main>
   );
 }
 

@@ -10,7 +10,7 @@ import {
   BrandMark,
   type ArchTone,
 } from "@/components/brand/primitives";
-import { SCHOOL_NAME } from "@/lib/school";
+import { useSchoolName } from "@/lib/site-settings";
 
 /**
  * The Capacitor entry screen: "Welcome. Who are you?".
@@ -89,6 +89,7 @@ export function NativeWelcome() {
   );
   // Remember the choice so the welcome does not push the landing beneath it.
   const [answered, setAnswered] = useState(false);
+  const schoolName = useSchoolName();
 
   // In a browser this renders nothing: the server already sent the landing
   // page, and swapping it for a second copy would be a hydration mismatch.
@@ -101,7 +102,7 @@ export function NativeWelcome() {
         <span className="fastly-jaali absolute inset-0" aria-hidden="true" />
         <div className="relative flex flex-col items-center gap-3 px-6 text-center">
           <BrandMark size={64} tone="light" />
-          <p className="fastly-display text-[20px] text-white">{SCHOOL_NAME}</p>
+          <p className="fastly-display text-[20px] text-white">{schoolName}</p>
         </div>
       </div>
 

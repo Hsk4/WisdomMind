@@ -22,8 +22,10 @@ import {
   suspendUser,
   unlinkGuardian,
   assignRole,
+  createAdmin,
   decideAccessRequest,
   getRequest,
+  resetParentDevice,
 } from "@/controllers/admin-users";
 
 const admin = [auth(), requireRole("admin", "super_admin")];
@@ -81,6 +83,22 @@ adminRoutes.patch(
     await setTeacherCourses(req);
     ok(res, null);
   }),
+);
+adminRoutes.post(
+  "/admin/users/:id/device/reset",
+  ...admin,
+  asyncHandler(async (req, res) => {
+    await resetParentDevice(req);
+    ok(res, null);
+  }),
+);
+
+/* Admins: a super admin adds another admin. */
+adminRoutes.post(
+  "/admin/admins",
+  auth(),
+  requireRole("super_admin"),
+  asyncHandler(async (req, res) => ok(res, await createAdmin(req))),
 );
 
 /* Requests */
@@ -165,7 +183,7 @@ adminRoutes.get(
 adminRoutes.get(
   "/admin/audit-log",
   ...admin,
-  asyncHandler(async (_req, res) => ok(res, await listAuditLog())),
+  asyncHandler(async (req, res) => ok(res, await listAuditLog(req))),
 );
 adminRoutes.get(
   "/admin/analytics",

@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { api } from "@/lib/api-client";
+import { api, errorMessage } from "@/lib/api-client";
+import { SearchSelect } from "@/components/ui/search-select";
 
 type Option = { id: string; label: string };
 
@@ -18,6 +19,9 @@ export function LinkGuardianForm({
   const [pending, startTransition] = useTransition();
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // Controlled, so the searchable selects can carry the value into `FormData`.
+  const [parentId, setParentId] = useState("");
+  const [studentId, setStudentId] = useState("");
 
   function run(action: "link" | "unlink", form: HTMLFormElement) {
     const data = new FormData(form);
@@ -38,11 +42,7 @@ export function LinkGuardianForm({
         setMessage(action === "link" ? "Linked." : "Link removed.");
         onDone?.();
       } catch (submissionError) {
-        setError(
-          submissionError instanceof Error
-            ? submissionError.message
-            : "Could not save the link",
-        );
+        setError(errorMessage(submissionError, "Could not save the link"));
       }
     });
   }
@@ -67,43 +67,37 @@ export function LinkGuardianForm({
         <label className="label" htmlFor="link-parent">
           Parent
         </label>
-        <select
+        <SearchSelect
           id="link-parent"
           name="parentId"
-          className="input"
+          options={parents.map((parent) => ({
+            value: parent.id,
+            label: parent.label,
+          }))}
+          value={parentId}
+          onChange={setParentId}
+          placeholder="Search parents"
+          emptyLabel="Choose a parent"
           required
-          defaultValue=""
-        >
-          <option value="" disabled>
-            Choose a parent
-          </option>
-          {parents.map((parent) => (
-            <option key={parent.id} value={parent.id}>
-              {parent.label}
-            </option>
-          ))}
-        </select>
+        />
       </div>
       <div>
         <label className="label" htmlFor="link-student">
           Student
         </label>
-        <select
+        <SearchSelect
           id="link-student"
           name="studentId"
-          className="input"
+          options={students.map((student) => ({
+            value: student.id,
+            label: student.label,
+          }))}
+          value={studentId}
+          onChange={setStudentId}
+          placeholder="Search students"
+          emptyLabel="Choose a student"
           required
-          defaultValue=""
-        >
-          <option value="" disabled>
-            Choose a student
-          </option>
-          {students.map((student) => (
-            <option key={student.id} value={student.id}>
-              {student.label}
-            </option>
-          ))}
-        </select>
+        />
       </div>
       <div className="flex flex-wrap gap-2">
         <button

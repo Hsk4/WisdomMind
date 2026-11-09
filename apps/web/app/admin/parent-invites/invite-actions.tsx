@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { api } from "@/lib/api-client";
+import { api, errorMessage } from "@/lib/api-client";
 
 /**
  * Admin controls for one link code: cancel it, or issue a fresh code when the
@@ -32,7 +32,7 @@ export function InviteActions({
       } catch (error) {
         setMessage({
           type: "error",
-          text: error instanceof Error ? error.message : "Failed to cancel",
+          text: errorMessage(error, "Failed to cancel"),
         });
       }
     });
@@ -50,7 +50,7 @@ export function InviteActions({
       } catch (error) {
         setMessage({
           type: "error",
-          text: error instanceof Error ? error.message : "Failed to reissue",
+          text: errorMessage(error, "Failed to reissue"),
         });
       }
     });

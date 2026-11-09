@@ -5,20 +5,29 @@
  */
 export class HttpError extends Error {
   readonly status: number;
+  /**
+   * A short machine-readable reason, for errors the client must branch on
+   * rather than just display (`DEVICE_LOCKED` on sign-in).
+   */
+  readonly code?: string;
 
-  constructor(status: number, message: string) {
+  constructor(status: number, message: string, code?: string) {
     super(message);
     this.name = "HttpError";
     this.status = status;
+    this.code = code;
   }
 }
 
-export const unauthorized = (message = "Unauthorized: not signed in") =>
+/*
+ * Messages are read by people, not by the client: the web shows them as-is.
+ * They never say "Unauthorized:" — that is a status, not a sentence.
+ */
+export const unauthorized = (message = "Please sign in again.") =>
   new HttpError(401, message);
 
-export const forbidden = (
-  message = "Unauthorized: missing role or not active",
-) => new HttpError(403, message);
+export const forbidden = (message = "You do not have access to this page.") =>
+  new HttpError(403, message);
 
 /** Still authenticated, but the account is not usable yet (status/onboarding). */
 export const notReady = (message: string) => new HttpError(403, message);

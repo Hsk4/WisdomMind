@@ -18,6 +18,11 @@ export interface NavItem {
   match?: string;
   superAdminOnly?: boolean;
   badgeKey?: NavBadgeKey;
+  /**
+   * Short label for the phone tab bar, where five tabs share the width. Falls
+   * back to `label`.
+   */
+  shortLabel?: string;
 }
 
 export interface NavGroup {
@@ -37,6 +42,7 @@ export const ADMIN_NAV_GROUPS: NavGroup[] = [
         // `/admin` redirects here, so the route highlights as "Overview".
         href: "/admin/requests",
         label: "Overview",
+        shortLabel: "Requests",
         icon: "Inbox",
         description: "Access requests and today's queue",
         match: "/admin",
@@ -50,6 +56,7 @@ export const ADMIN_NAV_GROUPS: NavGroup[] = [
       {
         href: "/admin/parent-invites",
         label: "Parent invites",
+        shortLabel: "Invites",
         icon: "UserPlus",
         description: "Guardian link codes",
       },
@@ -141,6 +148,7 @@ export const STUDENT_NAV_GROUPS: NavGroup[] = [
       {
         href: "/student",
         label: "Dashboard",
+        shortLabel: "Home",
         icon: "GraduationCap",
         description: "Your day at a glance",
         match: "/student",
@@ -148,6 +156,7 @@ export const STUDENT_NAV_GROUPS: NavGroup[] = [
       {
         href: "/student/courses",
         label: "My courses",
+        shortLabel: "Courses",
         icon: "BookOpen",
         description: "Enrolled courses",
       },
@@ -160,6 +169,7 @@ export const STUDENT_NAV_GROUPS: NavGroup[] = [
       {
         href: "/student/assignments",
         label: "Assignments",
+        shortLabel: "Work",
         icon: "ClipboardCheck",
         description: "Homework and submissions",
       },
@@ -189,6 +199,7 @@ export const STUDENT_NAV_GROUPS: NavGroup[] = [
       {
         href: "/student/invoices",
         label: "Invoices",
+        shortLabel: "Fees",
         icon: "Coins",
         description: "Fee invoices",
       },
@@ -225,6 +236,7 @@ export const TEACHER_NAV_GROUPS: NavGroup[] = [
       {
         href: "/teacher",
         label: "Dashboard",
+        shortLabel: "Home",
         icon: "GraduationCap",
         description: "Your teaching day",
         match: "/teacher",
@@ -294,6 +306,7 @@ export const PARENT_NAV_GROUPS: NavGroup[] = [
       {
         href: "/parent",
         label: "Children",
+        shortLabel: "Home",
         icon: "Users",
         description: "Follow your children",
         match: "/parent",
@@ -301,6 +314,7 @@ export const PARENT_NAV_GROUPS: NavGroup[] = [
       {
         href: "/parent/link",
         label: "Link a child",
+        shortLabel: "Link",
         icon: "Link2",
         description: "Redeem a guardian code",
       },
@@ -361,3 +375,56 @@ export const PANEL_LABEL: Record<
   teacher: { name: "Fastly LMS", subtitle: "Teacher panel" },
   parent: { name: "Fastly LMS", subtitle: "Parent panel" },
 };
+
+/**
+ * The five tabs a phone shows, per panel.
+ *
+ * The first five nav items are not the right five: a student's fifth item is
+ * Attendance, which is not where a thumb goes first, and an admin's fifth is
+ * the audit log. These are the destinations a person actually opens on a
+ * phone; everything else stays in the slide-over sheet behind "More".
+ */
+export const MOBILE_TABS: Record<
+  "admin" | "student" | "teacher" | "parent",
+  string[]
+> = {
+  admin: [
+    "/admin/requests",
+    "/admin/users",
+    "/admin/parent-invites",
+    "/admin/courses",
+    "/admin/settings",
+  ],
+  student: [
+    "/student",
+    "/student/courses",
+    "/student/assignments",
+    "/student/invoices",
+    "/student/support",
+  ],
+  teacher: [
+    "/teacher",
+    "/teacher/requests",
+    "/teacher/classes",
+    "/teacher/assignments",
+    "/teacher/attendance",
+  ],
+  parent: [
+    "/parent",
+    "/parent/link",
+    "/parent/invoices",
+    "/parent/meetings",
+  ],
+};
+
+/** The tab bar's items for a panel, in order, with "More" appended. */
+export function mobileTabItems(
+  panel: "admin" | "student" | "teacher" | "parent",
+  groups: NavGroup[],
+): NavItem[] {
+  const flat = groups.flatMap((group) => group.items);
+  const picked = MOBILE_TABS[panel]
+    .map((href) => flat.find((item) => item.href === href))
+    .filter((item): item is NavItem => Boolean(item));
+  return picked;
+}

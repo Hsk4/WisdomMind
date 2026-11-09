@@ -9,6 +9,7 @@ import { navIcon } from "@/components/shell/nav-icons";
 import {
   findNavItem,
   isNavItemActive,
+  mobileTabItems,
   PANEL_LABEL,
   type NavBadgeKey,
   type NavGroup,
@@ -28,9 +29,10 @@ export interface PanelShellProps {
   /** Optional secondary badge under the avatar name (level, class …). */
   hint?: string;
   /**
-   * Below `lg` students and parents get the five-item bottom tab bar from the
-   * brand kit's App-Home screen. Admin and teacher keep the slide-over sheet
-   * (their nav is long and grouped, which a five-tab bar would flatten).
+   * Below `lg` every panel gets the five-item bottom tab bar from the brand
+   * kit's App-Home screen: four destinations from `MOBILE_TABS` and a "More"
+   * tab that opens the full grouped nav in a sheet. `sheet` keeps the old
+   * hamburger-only header for a panel that wants it.
    */
   mobile?: "sheet" | "bottom-tabs";
   children: React.ReactNode;
@@ -71,8 +73,8 @@ export function PanelShell({
       : [];
 
   const flatItems = groups.flatMap((group) => group.items);
-  // Five is what fits a thumb-width tab without truncating labels.
-  const bottomItems = flatItems.slice(0, 5);
+  // Four destinations plus "More": five is what fits a thumb-width tab.
+  const bottomItems = mobileTabItems(panel, groups).slice(0, 4);
   const hasBottomTabs = mobile === "bottom-tabs";
 
   return (
@@ -96,11 +98,11 @@ export function PanelShell({
               className="fastly-jaali pointer-events-none absolute inset-0 opacity-70"
               aria-hidden="true"
             />
-            <div className="relative flex h-16 items-center gap-3 px-4 sm:px-6">
+            <div className="relative flex h-16 items-center gap-2 px-3 sm:gap-3 sm:px-6">
               {hasBottomTabs ? (
                 <Link
                   href={`/${panel}`}
-                  className="flex items-center gap-2 lg:hidden"
+                  className="flex h-11 w-11 items-center justify-center lg:hidden"
                   aria-label={`${label.name} home`}
                 >
                   <BrandMark size={28} tone="light" />
@@ -118,21 +120,40 @@ export function PanelShell({
                 <p className="truncate text-sm font-medium text-white">
                   {label.subtitle}
                 </p>
+                {/*
+                 * Desktop only. On a phone there is no sidebar, so this is
+                 * where the section name would come from — but the page's own
+                 * <h1> sits directly underneath and says exactly the same
+                 * thing ("Student panel / My courses" above "My courses"). The
+                 * tab bar already marks the section, so the second line only
+                 * adds noise where vertical space is scarcest.
+                 */}
                 {current ? (
-                  <p className="truncate text-xs text-on-navy-soft">{title}</p>
+                  <p className="hidden truncate text-xs text-on-navy-soft lg:block">
+                    {title}
+                  </p>
                 ) : null}
               </div>
+
+              {/*
+               * The theme toggle is a one-tap control on a phone. It used to
+               * sit here and was moved into the account menu to save width;
+               * that made a daily-ish choice two taps deep, so it is back —
+               * the header has room now that the second nav row is gone.
+               */}
+              <span className="lg:hidden">
+                <ThemeToggle tone="onNavy" />
+              </span>
 
               {notifications.length ? (
                 <NotificationsDrawer items={notifications} />
               ) : null}
 
-              {/* The theme control must be reachable on phones too, where
-                  `PageActions` (which also carries it) is hidden. */}
-              <span className="lg:hidden">
-                <ThemeToggle tone="onNavy" />
-              </span>
-
+              {/*
+               * On a phone the theme control lives in the account menu: three
+               * 44px circles plus the avatar do not fit a 360px header, and
+               * the theme is a once-in-a-while choice, not a daily one.
+               */}
               <span className="hidden lg:block">
                 <PageActions user={user} />
               </span>
@@ -182,7 +203,7 @@ export function PanelShell({
 
         <main
           className={cn(
-            "flex-1 px-4 py-6 sm:px-6 lg:px-8",
+            "flex-1 px-3 py-5 sm:px-6 sm:py-6 lg:px-8",
             hasBottomTabs ? "pb-28 lg:pb-10" : "",
           )}
         >
@@ -195,10 +216,11 @@ export function PanelShell({
           aria-label="Sections"
           className="fixed inset-x-0 bottom-0 z-30 border-t-[1.5px] border-line bg-card pb-[env(safe-area-inset-bottom)] lg:hidden"
         >
-          <ul className="flex items-stretch px-2 pt-2">
+          <ul className="flex items-stretch px-1 pt-1.5">
             {bottomItems.map((item) => {
               const Icon = navIcon(item.icon);
               const active = isNavItemActive(pathname, item);
+              const badge = item.badgeKey ? (badges?.[item.badgeKey] ?? 0) : 0;
               return (
                 <li key={item.href} className="flex flex-1">
                   <Link
@@ -206,16 +228,36 @@ export function PanelShell({
                     aria-current={active ? "page" : undefined}
                     className={cn("fastly-tab", active && "fastly-tab-active")}
                   >
-                    <Icon
-                      size={19}
-                      strokeWidth={active ? 2.1 : 1.7}
-                      aria-hidden="true"
-                    />
-                    <span className="max-w-full truncate">{item.label}</span>
+                    <span className="relative">
+                      <Icon
+                        size={19}
+                        strokeWidth={active ? 2.1 : 1.7}
+                        aria-hidden="true"
+                      />
+                      {badge > 0 ? (
+                        <span
+                          className="absolute -right-2 -top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-gold px-1 text-[9px] font-bold text-navy"
+                          aria-label={`${badge} waiting`}
+                        >
+                          {badge > 9 ? "9+" : badge}
+                        </span>
+                      ) : null}
+                    </span>
+                    <span className="max-w-full truncate">
+                      {item.shortLabel ?? item.label}
+                    </span>
                   </Link>
                 </li>
               );
             })}
+            <li className="flex flex-1">
+              <MobileNavSheet
+                panel={panel}
+                groups={groups}
+                badges={badges}
+                trigger="more"
+              />
+            </li>
           </ul>
           <div className="fastly-safe-gap" aria-hidden="true" />
         </nav>

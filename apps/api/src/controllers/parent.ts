@@ -12,6 +12,7 @@ import {
 import { badRequest, conflict, forbidden, notFound } from "@/lib/http-error";
 import { actorOf } from "@/middleware/auth";
 import {
+  claimTestUse,
   createInvite,
   findInviteByCode,
   findInviteById,
@@ -125,6 +126,11 @@ export async function revokeParentLink(req: Request) {
 /**
  * `POST /api/v1/parent/parent-links/redeem`
  *
+ * A code has two uses: the parent's, and one test use by a super admin. The
+ * office can therefore check a code before handing it over without spending
+ * the parent's use, and can also enter it on the parent's behalf when the
+ * parent is standing at the desk.
+ *
  * The student is resolved from the code, never from the client. The link is
  * claimed atomically (`UPDATE ... WHERE state = 'sent'`), so two browser tabs
  * cannot both win. A failed guess counts against the code, never fails twice.
@@ -147,8 +153,6 @@ export async function redeemLinkCode(req: Request) {
 
     const invite = await findInviteByCode(normalized);
     if (!invite) throw notFound("That code does not match any student.");
-    if (invite.state === "accepted")
-      throw conflict("This code has already been used.");
     if (invite.state === "revoked") {
       throw conflict("This code was cancelled by the student.");
     }
@@ -171,6 +175,29 @@ export async function redeemLinkCode(req: Request) {
     if (!student || student.role !== "student" || student.status !== "active") {
       throw notFound("That student account is no longer active.");
     }
+
+    /*
+     * The super admin's test use. It never links anything: it only proves the
+     * code works, and it is spent once. A super admin who is also the parent
+     * (the same person redeeming twice) gets the parent path below instead.
+     */
+    if (actor.role === "super_admin" && invite.state === "sent") {
+      const claimed = await claimTestUse(invite.id, actor.id);
+      if (!claimed) {
+        throw conflict("The test use of this code has already been used.");
+      }
+      await writeAudit({
+        actorId: actor.id,
+        action: "testRedeemParentLink",
+        targetType: "ParentInvite",
+        targetId: invite.id,
+        after: { studentId: invite.studentId, code: invite.code },
+      });
+      return { id: student.id, name: student.name, test: true };
+    }
+
+    if (invite.state === "accepted")
+      throw conflict("This code has already been used.");
 
     await db.transaction(async (tx) => {
       const claimed = await tx

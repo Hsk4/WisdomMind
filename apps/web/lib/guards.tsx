@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, type ReactNode } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import type { UserRole } from "@lms/shared";
 import { useAuth } from "./auth-context";
 import { webHomeFor } from "./role-home";
@@ -47,6 +47,37 @@ export function usePanelGuard(roles: UserRole[]) {
   const allowed = !denied && Boolean(user);
 
   return { user, allowed, denied, isLoading, error };
+}
+
+/**
+ * The public entry pages. A signed-in visitor is sent to their own panel
+ * instead of being shown a sign-in form they do not need.
+ */
+const PUBLIC_ENTRY_PAGES = ["/", "/mobile", "/sign-in", "/sign-up"];
+
+function isPublicEntryPage(pathname: string) {
+  return PUBLIC_ENTRY_PAGES.some(
+    (page) => pathname === page || pathname.startsWith(`${page}/`),
+  );
+}
+
+/**
+ * Keep authenticated visitors out of the public entry pages.
+ *
+ * This is the same rule as `usePanelGuard`'s "wrong area" branch, so it lives
+ * here next to it: one place decides where an account goes. The destination
+ * goes through `webHomeFor`, so a parent lands on the link page rather than
+ * the children dashboard (see `lib/role-home.ts`).
+ */
+export function usePublicPageRedirect() {
+  const { ready, signedIn, user } = useAuth();
+  const pathname = usePathname();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!ready || !signedIn || !user) return;
+    if (isPublicEntryPage(pathname)) router.replace(webHomeFor(user.home));
+  }, [ready, signedIn, user, pathname, router]);
 }
 
 export function PanelLoading() {

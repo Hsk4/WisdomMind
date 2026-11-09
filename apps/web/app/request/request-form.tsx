@@ -7,7 +7,7 @@ import type { CatalogOption } from "@lms/shared";
 import { PARENT_RELATIONSHIP_LABELS, PARENT_RELATIONSHIPS } from "@lms/shared";
 import { Card } from "@/components/ui/nila";
 import { ArchNumber } from "@/components/brand/primitives";
-import { api } from "@/lib/api-client";
+import { api, errorMessage } from "@/lib/api-client";
 import { useAuth } from "@/lib/auth-context";
 
 /**
@@ -360,9 +360,7 @@ export function RequestForm({
             await refresh();
             router.push("/pending");
           } catch (error) {
-            setMessage(
-              error instanceof Error ? error.message : "Could not submit",
-            );
+            setMessage(errorMessage(error, "Could not submit"));
           } finally {
             setPending(false);
           }

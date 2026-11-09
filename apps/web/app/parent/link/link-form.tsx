@@ -2,33 +2,40 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { api } from "@/lib/api-client";
+import { api, errorMessage } from "@/lib/api-client";
 
 /** The parent types the code their child gave them. */
 export function RedeemLinkCodeForm() {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
-  const [linked, setLinked] = useState<{ id: string; name: string } | null>(
-    null,
-  );
+  const [linked, setLinked] = useState<{
+    id: string;
+    name: string;
+    /** True when a super admin spent the code's one test use. */
+    test?: boolean;
+  } | null>(null);
 
   if (linked) {
     return (
       <div className="space-y-3">
         <p className="rounded-[var(--radius-card)] border border-status-green bg-status-green-soft px-3 py-2 text-sm text-status-green">
-          Linked to {linked.name}. You can now see their progress and fees.
+          {linked.test
+            ? `The code works. It belongs to ${linked.name}. The parent's own use is still available.`
+            : `Linked to ${linked.name}. You can now see their progress and fees.`}
         </p>
-        <button
-          type="button"
-          className="btn btn-primary"
-          onClick={() => {
-            // The detail page fetches the child itself on mount.
-            router.push(`/parent/children/detail?id=${linked.id}`);
-          }}
-        >
-          Open {linked.name}
-        </button>
+        {linked.test ? null : (
+          <button
+            type="button"
+            className="btn btn-primary"
+            onClick={() => {
+              // The detail page fetches the child itself on mount.
+              router.push(`/parent/children/detail?id=${linked.id}`);
+            }}
+          >
+            Open {linked.name}
+          </button>
+        )}
       </div>
     );
   }
@@ -42,15 +49,14 @@ export function RedeemLinkCodeForm() {
         setError(null);
         startTransition(async () => {
           try {
-            const result = await api.post<{ id: string; name: string }>(
-              "/parent/parent-links/redeem",
-              { code: form.get("code") },
-            );
+            const result = await api.post<{
+              id: string;
+              name: string;
+              test?: boolean;
+            }>("/parent/parent-links/redeem", { code: form.get("code") });
             setLinked(result);
           } catch (redeemError) {
-            setError(
-              redeemError instanceof Error ? redeemError.message : "That code did not work",
-            );
+            setError(errorMessage(redeemError, "That code did not work"));
           }
         });
       }}

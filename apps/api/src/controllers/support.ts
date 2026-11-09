@@ -21,9 +21,7 @@ import {
 export async function createSupportTicket(req: Request) {
   const actor = actorOf(req);
   if (actor.role !== "student" && actor.role !== "teacher") {
-    throw forbidden(
-      "Unauthorized: only students and teachers can create tickets",
-    );
+    throw forbidden("Only students and teachers can open a support ticket.");
   }
   const input = z
     .object({ subject: z.string().min(1), text: z.string().min(1) })
@@ -64,7 +62,7 @@ export async function addTicketMessage(req: Request) {
 
     const isAdmin = actor.role === "admin" || actor.role === "super_admin";
     if (ticket.createdBy !== actor.id && !isAdmin)
-      throw forbidden("Unauthorized");
+      throw forbidden("You do not have access to this ticket.");
 
     await addMessage(ticket.id, actor.id, input.text, tx);
   });

@@ -6,7 +6,7 @@ import { UserButton } from "@/lib/auth";
 import { BrandMark } from "@/components/brand/primitives";
 import { ThemeToggle } from "@/components/shell/page-actions";
 import { RoleChip, StatusChip } from "@/components/ui/nila";
-import { SCHOOL_NAME } from "@/lib/school";
+import { useSchoolName } from "@/lib/site-settings";
 import {
   ADMIN_NAV_GROUPS,
   ADMIN_SUPER_NAV,
@@ -76,6 +76,7 @@ export function GateShell({
   user?: { name: string; role: string | null };
   children: ReactNode;
 }) {
+  const schoolName = useSchoolName();
   return (
     <div className="flex min-h-screen flex-col bg-background">
       <header className="fastly-gate-band relative overflow-hidden">
@@ -88,7 +89,7 @@ export function GateShell({
             >
               <BrandMark size={30} tone="light" />
               <span className="fastly-display text-[18px] text-white">
-                {SCHOOL_NAME}
+                {schoolName}
               </span>
             </Link>
             <span

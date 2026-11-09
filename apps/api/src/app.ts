@@ -13,6 +13,7 @@ import { parentLinkRoutes, studentParentLinkRoutes } from "@/routes/parent";
 import { adminRoutes } from "@/routes/admin";
 import { catalogRoutes } from "@/routes/catalog";
 import { panelRoutes } from "@/routes/panels";
+import { siteRoutes } from "@/routes/site";
 
 /**
  * Builds the Express app without listening, so tests can drive it with
@@ -155,6 +156,7 @@ export function createApp(
   );
 
   app.use("/api/v1", healthRoutes);
+  app.use("/api/v1", siteRoutes);
   app.use("/api/v1", meRoutes);
   app.use("/api/v1", studentParentLinkRoutes);
   app.use("/api/v1", parentLinkRoutes);

@@ -28,6 +28,7 @@ const TABLES = [
   "levels",
   "subjects",
   "boards",
+  "parent_devices",
   "parent_invites",
   "guardianships",
   "student_subjects",
@@ -42,15 +43,18 @@ export async function resetDb(): Promise<void> {
 }
 
 /**
- * Tokens name an account id; the verifier below maps them back. `clerkId` is the
- * historical column name for that provider-neutral identity string.
+ * Tokens name an account id: the token's `sub` is the local `users.id`.
+ *
+ * Tests still call the seed key a `clerkId` because that is the name every
+ * existing test uses; it is just a label for the account, and `seedUser` makes
+ * it the row's id so `authHeader("student_1")` resolves to that row.
  */
-export const tokenFor = (clerkId: string) => `test-token-${clerkId}`;
+export const tokenFor = (accountId: string) => `test-token-${accountId}`;
 
 export const testVerifier: TokenVerifier = async (token) => {
   if (!token.startsWith("test-token-")) throw new Error("bad token");
-  const clerkId = token.slice("test-token-".length);
-  return { clerkId, metadata: {} };
+  const userId = token.slice("test-token-".length);
+  return { userId, metadata: {} };
 };
 
 type SeedUser = {
@@ -70,7 +74,8 @@ export async function seedUser(input: SeedUser) {
   const [row] = await db
     .insert(users)
     .values({
-      clerkId: input.clerkId,
+      // The seed key is the row id, so a token minted from it resolves.
+      id: input.clerkId,
       name: input.name ?? input.clerkId,
       email: input.email ?? `${input.clerkId}@example.com`,
       role: input.role ?? null,

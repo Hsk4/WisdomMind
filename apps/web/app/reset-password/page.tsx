@@ -6,6 +6,8 @@ import Link from "next/link";
 
 import { BrandMark } from "@/components/brand/primitives";
 import { ThemeToggle } from "@/components/shell/page-actions";
+import { PasswordInput } from "@/components/ui/password-input";
+import { errorMessage } from "@/lib/api-client";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api/v1";
 
@@ -45,7 +47,7 @@ function ResetPasswordForm() {
       setConfirmPassword("");
       window.setTimeout(() => router.replace("/sign-in/"), 1200);
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Unable to reset password");
+      setError(errorMessage(cause, "Unable to reset password"));
     } finally {
       setBusy(false);
     }
@@ -57,11 +59,11 @@ function ResetPasswordForm() {
       <form className="mt-6 space-y-4" onSubmit={submit}>
         <label className="block text-sm text-foreground">
           <span className="mb-1.5 block font-medium">New password</span>
-          <input type="password" required minLength={12} maxLength={128} autoComplete="new-password" value={password} onChange={(event) => setPassword(event.target.value)} className="input" />
+          <PasswordInput required minLength={12} maxLength={128} autoComplete="new-password" value={password} onChange={(event) => setPassword(event.target.value)} className="input" />
         </label>
         <label className="block text-sm text-foreground">
           <span className="mb-1.5 block font-medium">Confirm new password</span>
-          <input type="password" required minLength={12} maxLength={128} autoComplete="new-password" value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} className="input" />
+          <PasswordInput required minLength={12} maxLength={128} autoComplete="new-password" value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} className="input" />
         </label>
         {error ? <p role="alert" className="text-sm text-status-red">{error}</p> : null}
         {message ? <p role="status" className="rounded-lg bg-accent p-3 text-sm text-accent-foreground">{message}</p> : null}

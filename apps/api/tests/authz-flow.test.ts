@@ -149,7 +149,7 @@ describe("access requests", () => {
     const [row] = await db
       .select()
       .from(users)
-      .where(eq(users.clerkId, "applicant_2"));
+      .where(eq(users.id, "applicant_2"));
     expect(row.role).toBeNull();
     expect(row.status).toBe("pending");
   });

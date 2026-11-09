@@ -34,7 +34,7 @@ export interface UserMenuProps {
    * only; the hint belongs inside the menu if it is ever needed there.
    */
   hint?: string;
-  /** Extra items rendered above Sign out (e.g. "View as"). */
+  /** Extra items rendered above Sign out (e.g. the theme menu on a phone). */
   children?: React.ReactNode;
   className?: string;
 }
@@ -68,7 +68,7 @@ export function UserMenu({
           )}
           aria-label={`Account menu for ${name}`}
         >
-          <Avatar className="h-9 w-9 border border-border">
+          <Avatar className="h-10 w-10 border border-border sm:h-9 sm:w-9">
             <AvatarFallback>{initials(name)}</AvatarFallback>
           </Avatar>
           {/* The name lives in the dropdown; the header only needs the avatar. */}
@@ -97,16 +97,17 @@ export function UserMenu({
           <Settings />
           Account settings
         </DropdownMenuItem>
-        <DropdownMenuItem onSelect={onSignOut}>
-          <LogOut />
-          Sign out
-        </DropdownMenuItem>
         {children ? (
           <>
             <DropdownMenuSeparator />
             {children}
           </>
         ) : null}
+        <DropdownMenuSeparator />
+        <DropdownMenuItem onSelect={onSignOut}>
+          <LogOut />
+          Sign out
+        </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   );

@@ -20,7 +20,7 @@ import {
   Score,
   formatDay,
 } from "@/components/ui/nila";
-import { api } from "@/lib/api-client";
+import { api, errorMessage } from "@/lib/api-client";
 import { InlineLoading } from "@/components/shared/skeleton";
 
 type StudentDetail = {
@@ -54,7 +54,11 @@ function DetailById() {
   if (query.loading)
     return <InlineLoading />;
   if (query.error)
-    return <p className="p-6 text-sm text-status-red">{query.error.message}</p>;
+    return (
+      <p className="p-6 text-sm text-status-red">
+        {errorMessage(query.error, "We could not load this student.")}
+      </p>
+    );
   const detail = query.data;
   if (!detail) return null;
 

@@ -2,11 +2,14 @@
 
 import { Suspense } from "react";
 import { useSearchParams } from "next/navigation";
-import { api } from "@/lib/api-client";
+import type { AdminUserDetail } from "@lms/shared";
+import { api, errorMessage } from "@/lib/api-client";
 import { useAuth } from "@/lib/auth-context";
 import { useAsync } from "@/lib/use-async";
 import { UserDetailView } from "./user-detail-view";
 import { InlineLoading } from "@/components/shared/skeleton";
+
+type TeacherCourseRow = { id: string; label: string; teacherIds: string[] };
 
 /**
  * Static export cannot prerender an unknown id, so the id is a query param:
@@ -17,21 +20,13 @@ function DetailById() {
   const id = params.get("id") ?? "";
 
   const userQuery = useAsync(
-    () =>
-      api.get<{
-        id: string;
-        clerkId: string;
-        name: string;
-        email: string;
-        role: string | null;
-        status: string;
-        onboarded: boolean;
-        createdAt: string;
-        rejectedAt: string | null;
-        rejectionReason: string | null;
-      }>(`/admin/users/${id}`),
+    () => api.get<AdminUserDetail>(`/admin/users/${id}`),
     [id],
     { enabled: Boolean(id) },
+  );
+  const coursesQuery = useAsync(
+    () => api.get<TeacherCourseRow[]>("/admin/catalog/teacher-courses"),
+    [],
   );
   const { user: me } = useAuth();
 
@@ -39,11 +34,12 @@ function DetailById() {
     return (
       <p className="p-6 text-sm text-muted-foreground">No user selected.</p>
     );
-  if (userQuery.loading)
-    return <InlineLoading />;
+  if (userQuery.loading && !userQuery.data) return <InlineLoading />;
   if (userQuery.error) {
     return (
-      <p className="p-6 text-sm text-status-red">{userQuery.error.message}</p>
+      <p className="p-6 text-sm text-status-red">
+        {errorMessage(userQuery.error, "We could not load this account.")}
+      </p>
     );
   }
   if (!userQuery.data) return null;
@@ -55,14 +51,25 @@ function DetailById() {
       ? user.role !== "super_admin"
       : user.role !== "super_admin" && user.role !== "admin";
 
-  return <UserDetailView user={user} canManage={canManage} />;
+  const courses = (coursesQuery.data ?? []).map((course) => ({
+    id: course.id,
+    label: course.label,
+    selected: course.teacherIds.includes(user.id),
+  }));
+
+  return (
+    <UserDetailView
+      user={user}
+      canManage={canManage}
+      courses={courses}
+      onChanged={userQuery.reload}
+    />
+  );
 }
 
 export default function AdminUserDetailPage() {
   return (
-    <Suspense
-      fallback={<InlineLoading />}
-    >
+    <Suspense fallback={<InlineLoading />}>
       <DetailById />
     </Suspense>
   );

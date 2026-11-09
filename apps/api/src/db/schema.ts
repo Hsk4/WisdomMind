@@ -194,7 +194,6 @@ export const subjects = pgTable("subjects", {
 
 export const users = pgTable("users", {
   id: id(),
-  clerkId: text("clerk_id").notNull(),
   /** Nullable only for accounts created before local password authentication. */
   passwordHash: text("password_hash"),
   passwordResetTokenHash: text("password_reset_token_hash"),
@@ -215,7 +214,6 @@ export const users = pgTable("users", {
   createdAt: createdAt(),
   updatedAt: updatedAt(),
 }, (table) => [
-  unique("users_clerk_id_unique").on(table.clerkId),
   index("users_role_idx").on(table.role),
   index("users_status_idx").on(table.status),
   uniqueIndex("users_email_unique").on(table.email),
@@ -326,6 +324,15 @@ export const parentInvites = pgTable("parent_invites", {
   /** Failed redemptions. Incremented atomically in SQL, never read-then-write. */
   attempts: integer("attempts").notNull().default(0),
   lastAttemptAt: timestamp("last_attempt_at", { withTimezone: true }),
+  /**
+   * The super admin's one test use of the code. A code is good for the parent
+   * and for one office test, so the office can check a code before handing it
+   * over without spending the parent's use.
+   */
+  testRedeemedAt: timestamp("test_redeemed_at", { withTimezone: true }),
+  testRedeemedBy: uuid("test_redeemed_by").references(() => users.id, {
+    onDelete: "set null",
+  }),
   createdAt: createdAt(),
   updatedAt: updatedAt(),
 }, (table) => [
@@ -338,6 +345,48 @@ export const parentInvites = pgTable("parent_invites", {
   check("parent_invites_attempts_non_negative", sql`${table.attempts} >= 0`),
 ]);
 
+/**
+ * One phone per parent.
+ *
+ * A parent account is bound to the first device it signs in from. A second
+ * device is refused until the parent says why they are switching; the office
+ * can also unlock the account (`POST /admin/users/:id/device/reset`). The row
+ * is the binding; `device_id` is the client's own random id, never a
+ * fingerprint.
+ */
+export const parentDevices = pgTable("parent_devices", {
+  parentId: uuid("parent_id")
+    .primaryKey()
+    .references(() => users.id, { onDelete: "cascade" }),
+  deviceId: text("device_id").notNull(),
+  deviceLabel: text("device_label"),
+  boundAt: timestamp("bound_at", { withTimezone: true }).notNull().defaultNow(),
+  /** Why the parent moved to this phone. Null on the first binding. */
+  changeReason: text("change_reason"),
+  changedAt: timestamp("changed_at", { withTimezone: true }),
+  updatedAt: updatedAt(),
+}, (table) => [index("parent_devices_device_idx").on(table.deviceId)]);
+/**
+ * School identity, one row (`id = 'default'`).
+ *
+ * The name, tagline and contact details used to be build-time constants; a
+ * super admin now edits them and every client reads them from `GET
+ * /site-settings`. `favicon` is a data URL (PNG/JPG/WebP/ICO, <= 150 KB).
+ */
+export const siteSettings = pgTable("site_settings", {
+  id: text("id").primaryKey().default("default"),
+  schoolName: text("school_name").notNull().default("Wisdom Mind"),
+  tagline: text("tagline"),
+  supportEmail: text("support_email"),
+  phone: text("phone"),
+  address: text("address"),
+  favicon: text("favicon"),
+  updatedBy: uuid("updated_by").references(() => users.id, {
+    onDelete: "set null",
+  }),
+  createdAt: createdAt(),
+  updatedAt: updatedAt(),
+});
 export const auditLogs = pgTable("audit_logs", {
   id: id(),
   // No cascade: an audit trail must not vanish with the actor it records.

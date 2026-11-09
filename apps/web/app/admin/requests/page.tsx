@@ -12,9 +12,12 @@ import { useCallback, useState } from "react";
 import type { AdminRequestView } from "@lms/shared";
 import { api } from "@/lib/api-client";
 import { useAsync } from "@/lib/use-async";
+import { useTableControls } from "@/lib/use-table-controls";
 import { PageHeader, Card, RoleChip, formatDate } from "@/components/ui/nila";
 import { ArchNumber } from "@/components/brand/primitives";
 import { EmptyState } from "@/components/shared/empty-state";
+import { ListToolbar } from "@/components/shared/list-toolbar";
+import { Pagination } from "@/components/shared/pagination";
 import { ChevronDown, ChevronRight, Inbox } from "lucide-react";
 import { RequestActions } from "./request-actions";
 import { RequestDetail } from "./request-detail";
@@ -177,6 +180,17 @@ export default function AdminRequestsPage() {
     .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))
     .slice(0, 15);
 
+  // The API returns each list whole; search and paging happen here.
+  const openTable = useTableControls(open, {
+    searchText: (request) =>
+      `${request.name} ${request.email} ${request.application.parent?.studentName ?? ""} ${request.subjectLabels.join(" ")}`,
+    pageSize: 10,
+  });
+  const decidedTable = useTableControls(decided, {
+    searchText: (request) => `${request.name} ${request.email}`,
+    pageSize: 15,
+  });
+
   return (
     <>
       <PageHeader
@@ -210,6 +224,14 @@ export default function AdminRequestsPage() {
         })}
       </div>
 
+      <ListToolbar
+        searchPlaceholder="Search applicant name or email"
+        searchValue={openTable.searchInput}
+        onSearchChange={openTable.setSearchInput}
+        hasActiveFilters={openTable.hasActiveFilters}
+        onClear={openTable.clear}
+      />
+
       <h2 className="mb-3 flex items-center gap-2.5 text-xs font-semibold uppercase tracking-[0.14em] text-cobalt">
         <ArchNumber n="1" size={26} tone="cobalt" />
         Open ({open.length})
@@ -225,9 +247,16 @@ export default function AdminRequestsPage() {
               : "New sign-ups wait here until the office approves them. You are all caught up."
           }
         />
+      ) : openTable.rows.length === 0 ? (
+        <EmptyState
+          size="inline"
+          icon={Inbox}
+          title="No request matches"
+          description="Try a different search."
+        />
       ) : (
         <div className="space-y-3">
-          {open.map((request) => (
+          {openTable.rows.map((request) => (
             <OpenRequest
               key={request.id}
               request={request}
@@ -242,6 +271,13 @@ export default function AdminRequestsPage() {
           ))}
         </div>
       )}
+      <Pagination
+        page={openTable.page}
+        pageCount={openTable.pageCount}
+        totalItems={openTable.matched}
+        pageSize={10}
+        onPageChange={openTable.setPage}
+      />
 
       <h2 className="mb-3 mt-10 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
         Recently decided
@@ -267,7 +303,7 @@ export default function AdminRequestsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {decided.map((request) => (
+              {decidedTable.rows.map((request) => (
                 <TableRow key={request.id}>
                   <TableCell>
                     <p className="font-medium">{request.name}</p>

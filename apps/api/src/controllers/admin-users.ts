@@ -1,8 +1,9 @@
 import type { Request } from "express";
 import { z } from "zod";
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import {
   assignRoleSchema,
+  createAdminSchema,
   recordIdSchema,
   type AdminRequestView,
   rejectUserSchema,
@@ -13,7 +14,7 @@ import {
   type UserStatus,
 } from "@lms/shared";
 import { db } from "@/db";
-import { accessRequests } from "@/db/schema";
+import { accessRequests, users } from "@/db/schema";
 import { conflict, forbidden, notFound } from "@/lib/http-error";
 import { writeAudit } from "@/lib/audit";
 import { actorOf } from "@/middleware/auth";
@@ -30,7 +31,12 @@ import {
   listCourseIdsForTeacher,
   replaceTeacherCourses,
 } from "@/db/queries/teacher-courses";
-import { findUserById, updateUser } from "@/db/queries/users";
+import {
+  createUser,
+  findUserByEmail,
+  findUserById,
+  updateUser,
+} from "@/db/queries/users";
 import { LINK_CODE_TTL_DAYS, uniqueLinkCode } from "@/lib/link-codes";
 import {
   countOpenRequests,
@@ -41,8 +47,16 @@ import {
   listBooks,
   findBookById,
 } from "@/db/queries/books";
-import { listAuditLogs } from "@/db/queries/audit-logs";
+import {
+  countAuditLogs,
+  listAuditActions,
+  listAuditLogPage,
+} from "@/db/queries/audit-logs";
+import { actionLabel, describeChanges, describeTarget } from "@/lib/audit-format";
 import { listInvitesWithStudent } from "@/db/queries/parent-invites";
+import { clearParentDevice, findParentDevice } from "@/db/queries/parent-devices";
+import { listParentIdsForStudent } from "@/db/queries/guardianships";
+import { hashPassword } from "@/lib/password";
 import {
   countUsers,
   listAllUsers,
@@ -603,12 +617,20 @@ export async function listUsersAdmin(req: Request) {
       status: z.string().optional(),
       role: z.string().optional(),
       q: z.string().optional(),
+      boardId: recordIdSchema.optional(),
+      levelId: recordIdSchema.optional(),
       page: z.coerce.number().int().min(1).default(1),
       pageSize: z.coerce.number().int().min(1).max(200).default(25),
     })
     .parse(req.query);
 
-  const filter = { status: query.status, role: query.role, q: query.q };
+  const filter = {
+    status: query.status,
+    role: query.role,
+    q: query.q,
+    boardId: query.boardId,
+    levelId: query.levelId,
+  };
   const [found, total, boards, levels, all, active, pending, teachers] =
     await Promise.all([
       listAllUsers(filter),
@@ -647,7 +669,6 @@ export async function listUsersAdmin(req: Request) {
         level: user.student.levelId
           ? levelName.get(user.student.levelId)
           : undefined,
-        rejectionReason: user.rejectionReason ?? undefined,
       })),
   };
 }
@@ -656,42 +677,216 @@ export async function listUsersAdmin(req: Request) {
 export async function getUserDetail(req: Request) {
   const user = await findUserById(String(req.params.id));
   if (!user) throw notFound("User not found");
+
+  const [boards, levels, device, guardianIds, courseIds] = await Promise.all([
+    listBoards(),
+    listLevels(),
+    user.role === "parent" ? findParentDevice(user.id) : Promise.resolve(null),
+    user.role === "student"
+      ? listParentIdsForStudent(user.id)
+      : Promise.resolve([]),
+    user.role === "teacher"
+      ? listCourseIdsForTeacher(user.id)
+      : Promise.resolve([]),
+  ]);
+  const boardName = new Map(boards.map((b) => [b.id, b.name]));
+  const levelName = new Map(levels.map((l) => [l.id, l.name]));
+  const guardians = await listUsersByIds(guardianIds);
+
   return {
     id: user.id,
-    clerkId: user.clerkId,
     name: user.name,
     email: user.email,
     role: user.role,
     status: user.status,
     onboarded: user.onboarded,
     createdAt: user.createdAt.toISOString(),
-    rejectedAt: user.rejectedAt ? user.rejectedAt.toISOString() : null,
-    rejectionReason: user.rejectionReason ?? null,
+    boardId: user.student.boardId,
+    levelId: user.student.levelId,
+    boardName: user.student.boardId
+      ? (boardName.get(user.student.boardId) ?? null)
+      : null,
+    levelName: user.student.levelId
+      ? (levelName.get(user.student.levelId) ?? null)
+      : null,
+    device: device
+      ? {
+          deviceId: device.deviceId,
+          deviceLabel: device.deviceLabel,
+          boundAt: device.boundAt.toISOString(),
+          changeReason: device.changeReason,
+          changedAt: device.changedAt ? device.changedAt.toISOString() : null,
+        }
+      : null,
+    guardians: guardians.map((g) => ({
+      id: g.id,
+      name: g.name,
+      email: g.email,
+    })),
+    courseIds,
   };
+}
+
+/**
+ * `POST /api/v1/admin/users/:id/device/reset`
+ *
+ * Unlocks a parent account: the next sign-in binds whatever phone it comes
+ * from. The old phone is signed out too, so "unlock" cannot leave two phones
+ * holding a working session.
+ */
+export async function resetParentDevice(req: Request) {
+  const actor = actorAdmin(req);
+  const id = recordIdSchema.parse(req.params.id);
+
+  await db.transaction(async (tx) => {
+    const user = await findUserById(id, tx);
+    if (!user) throw notFound("User not found");
+    if (user.role !== "parent") {
+      throw conflict("Only parent accounts are bound to a phone");
+    }
+    const before = await findParentDevice(user.id, tx);
+    await clearParentDevice(user.id, tx);
+    await tx
+      .update(users)
+      .set({ sessionVersion: sql`${users.sessionVersion} + 1` })
+      .where(eq(users.id, user.id));
+    await writeAudit(
+      {
+        actorId: actor.id,
+        action: "resetParentDevice",
+        targetType: "User",
+        targetId: user.id,
+        before: before
+          ? { deviceId: before.deviceId, deviceLabel: before.deviceLabel }
+          : null,
+        after: { deviceId: null },
+      },
+      { tx },
+    );
+  });
+}
+
+/**
+ * `POST /api/v1/admin/admins` — super admin only.
+ *
+ * Creates an active admin account with a password the super admin hands over
+ * in person. There is no email invitation: the office sets the password and
+ * the new admin changes it from the reset flow if they want to.
+ */
+export async function createAdmin(req: Request) {
+  const actor = actorOf(req);
+  if (actor.role !== "super_admin") {
+    throw forbidden("Only a super admin can add admins");
+  }
+  const input = createAdminSchema.parse(req.body);
+
+  const existing = await findUserByEmail(input.email);
+  if (existing) throw conflict("An account with that email already exists");
+
+  const passwordHash = await hashPassword(input.password);
+  const created = await db.transaction(async (tx) => {
+    const user = await createUser(
+      {
+        email: input.email,
+        name: input.name,
+        role: "admin",
+        status: "active",
+        onboarded: true,
+        passwordHash,
+      },
+      tx,
+    );
+    await writeAudit(
+      {
+        actorId: actor.id,
+        action: "createAdmin",
+        targetType: "User",
+        targetId: user.id,
+        after: { name: user.name, email: user.email, role: "admin" },
+      },
+      { tx },
+    );
+    return user;
+  });
+
+  return { id: created.id, name: created.name, email: created.email };
 }
 
 export async function pendingUsers() {
   return listUsersByStatus("pending");
 }
 
-export async function listAuditLog() {
-  const entries = await listAuditLogs();
-  const actors = await listUsersByIds([
-    ...new Set(entries.map((e) => e.actorId)),
+/**
+ * `GET /api/v1/admin/audit-log`
+ *
+ * Paged, searchable, and already worded: the page renders `action` and
+ * `changes` as text, never as JSON. Target names are resolved here because the
+ * snapshots only carry ids.
+ */
+export async function listAuditLog(req: Request) {
+  const query = z
+    .object({
+      q: z.string().trim().max(120).optional(),
+      action: z.string().trim().max(80).optional(),
+      page: z.coerce.number().int().min(1).default(1),
+      pageSize: z.coerce.number().int().min(1).max(100).default(25),
+    })
+    .parse(req.query);
+
+  const filter = { q: query.q || undefined, action: query.action || undefined };
+  const [total, actionKeys] = await Promise.all([
+    countAuditLogs(filter),
+    listAuditActions(),
   ]);
-  const byId = new Map(
-    actors.map((a) => [a.id, { name: a.name, email: a.email }]),
-  );
-  return entries.map((entry) => ({
-    id: entry.id,
-    action: entry.action,
-    targetType: entry.targetType,
-    targetId: entry.targetId,
-    actor: byId.get(entry.actorId),
-    before: entry.before,
-    after: entry.after,
-    at: entry.at.toISOString(),
-  }));
+  const pageCount = Math.max(1, Math.ceil(total / query.pageSize));
+  const page = Math.min(query.page, pageCount);
+  const rows = await listAuditLogPage(filter, page, query.pageSize);
+
+  // Resolve the names the snapshots refer to, in one query per kind.
+  const userIds = new Set<string>();
+  for (const row of rows) {
+    for (const snapshot of [row.before, row.after]) {
+      for (const key of ["parentId", "studentId", "userId"]) {
+        const value = snapshot?.[key];
+        if (typeof value === "string") userIds.add(value);
+      }
+    }
+  }
+  const named = await listUsersByIds([...userIds]);
+  const nameById = new Map(named.map((u) => [u.id, u.name]));
+
+  const targetName = (row: (typeof rows)[number]): string | null => {
+    for (const snapshot of [row.after, row.before]) {
+      for (const key of ["name", "parentName", "title", "schoolName"]) {
+        const value = snapshot?.[key];
+        if (typeof value === "string" && value) return value;
+      }
+      for (const key of ["studentId", "parentId", "userId"]) {
+        const value = snapshot?.[key];
+        if (typeof value === "string" && nameById.has(value)) {
+          return nameById.get(value) ?? null;
+        }
+      }
+    }
+    return null;
+  };
+
+  return {
+    total,
+    page,
+    pageCount,
+    actions: actionKeys.map((key) => ({ key, label: actionLabel(key) })),
+    entries: rows.map((row) => ({
+      id: row.id,
+      at: row.at.toISOString(),
+      actor: row.actorName,
+      actorRole: row.actorRole,
+      action: actionLabel(row.action),
+      actionKey: row.action,
+      target: describeTarget(row.targetType, targetName(row)),
+      changes: describeChanges(row.before, row.after),
+    })),
+  };
 }
 
 export async function listParentLinks() {

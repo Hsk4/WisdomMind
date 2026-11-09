@@ -11,9 +11,13 @@ type ChildRow = { id: string; name: string; boardName: string | null; levelName:
 
 export default function ParentLinkPage() {
   const { user } = useAuth();
+  // A super admin may be here only to test a code; `/parent/overview` is not
+  // theirs to read, so it is skipped for them.
+  const isSuperAdmin = user?.role === "super_admin";
   const childrenQuery = useAsync(
     () => api.get<ChildRow[]>("/parent/overview"),
     [],
+    { enabled: Boolean(user) && !isSuperAdmin },
   );
   const children = childrenQuery.data ?? [];
   // A parent who has linked a child does not need the start-page card.
@@ -34,41 +38,65 @@ export default function ParentLinkPage() {
               Codes are eight characters, work once, and expire after 14 days.
               If a code does not work, ask your child to create a new one.
             </p>
+            {isSuperAdmin ? (
+              <p className="mt-2 rounded-[var(--radius-card)] border border-border bg-surface px-3 py-2 text-xs text-muted-foreground">
+                As a super admin, entering a code here spends its one test use
+                only. It does not link the account, and the parent can still
+                use the code afterwards.
+              </p>
+            ) : null}
             <div className="mt-4 max-w-md">
               <RedeemLinkCodeForm />
             </div>
           </Card>
 
-          <section>
-            <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-              Already linked ({children.length})
-            </h2>
-            {children.length === 0 ? (
-              <Empty>No child linked yet.</Empty>
-            ) : (
-              <div className="grid gap-3 sm:grid-cols-2">
-                {children.map((child) => (
-                  <Link
-                    key={child.id}
-                    href={`/parent/children/detail?id=${child.id}`}
-                    className="block"
-                  >
-                    <Card className="p-4 transition-colors duration-150 hover:bg-tint">
-                      <p className="font-medium">{child.name}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {[child.boardName, child.levelName]
-                          .filter(Boolean)
-                          .join(" / ") || "No board set"}
-                      </p>
-                    </Card>
-                  </Link>
-                ))}
-              </div>
-            )}
-          </section>
+          {isSuperAdmin ? null : (
+            <section>
+              <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+                Already linked ({children.length})
+              </h2>
+              {children.length === 0 ? (
+                <Empty>No child linked yet.</Empty>
+              ) : (
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {children.map((child) => (
+                    <Link
+                      key={child.id}
+                      href={`/parent/children/detail?id=${child.id}`}
+                      className="block"
+                    >
+                      <Card className="p-4 transition-colors duration-150 hover:bg-tint">
+                        <p className="font-medium">{child.name}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {[child.boardName, child.levelName]
+                            .filter(Boolean)
+                            .join(" / ") || "No board set"}
+                        </p>
+                      </Card>
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </section>
+          )}
         </div>
 
-        {hasChildren ? (
+        {isSuperAdmin ? (
+          <Card className="h-fit p-5">
+            <h2 className="text-sm font-semibold">Testing a code</h2>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Each code has two uses: the parent&apos;s, and one test use by the
+              office. The Guardian link codes page shows which codes still have
+              their test use.
+            </p>
+            <Link
+              href="/admin/parent-invites"
+              className="border border-border bg-card text-foreground shadow-sm hover:bg-secondary mt-4"
+            >
+              Guardian link codes
+            </Link>
+          </Card>
+        ) : hasChildren ? (
           <Card className="h-fit p-5">
             <h2 className="text-sm font-semibold">Linked</h2>
             <p className="mt-1 text-xs text-muted-foreground">

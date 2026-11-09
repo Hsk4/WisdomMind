@@ -13,7 +13,7 @@ import {
   TableCell,
 } from "@/components/ui/table";
 import { PageHeader, Card, Empty } from "@/components/ui/nila";
-import { api } from "@/lib/api-client";
+import { api, errorMessage } from "@/lib/api-client";
 import { InlineLoading } from "@/components/shared/skeleton";
 
 type CourseDetail = {
@@ -44,7 +44,9 @@ function DetailById() {
   }
   if (courseQuery.error) {
     return (
-      <p className="p-6 text-sm text-status-red">{courseQuery.error.message}</p>
+      <p className="p-6 text-sm text-status-red">
+        {errorMessage(courseQuery.error, "We could not load this course.")}
+      </p>
     );
   }
   const course = courseQuery.data;

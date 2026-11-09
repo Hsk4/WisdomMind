@@ -1,3 +1,5 @@
+"use client";
+
 import * as React from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
@@ -9,45 +11,28 @@ interface PaginationProps {
   pageCount: number;
   totalItems: number;
   pageSize?: number;
-  /** Current query string, so page links keep the active filters. */
-  searchParams?: Record<string, string | undefined>;
-  /** Where the page links point, e.g. "/admin/users". */
-  basePath: string;
-  pageParam?: string;
+  /** Called with the page the user picked. The page owns the state. */
+  onPageChange: (page: number) => void;
   className?: string;
 }
 
 /**
- * Reference kit `Pagination`, rebuilt on URLs.
+ * Pagination as buttons, not links.
  *
- * Its original `onPageChange(page)` needs client state; these pages are server
- * components reading the database. Making each page number a real `<a>` keeps
- * pagination working without JavaScript, keeps the back button honest, and
- * makes a filtered+paginated view a shareable link. `searchParams` is threaded
- * back in so paging never drops the active search or status filter.
+ * The links were real `<a href>`s, so every page change was a full navigation —
+ * which the Capacitor static export cannot serve, and which bounced the user
+ * to sign-in. The list state lives in `useListState` now, so paging is a
+ * re-render and the filters stay exactly where they were.
  */
 export function Pagination({
   page,
   pageCount,
   totalItems,
   pageSize = 20,
-  searchParams = {},
-  basePath,
-  pageParam = "page",
+  onPageChange,
   className,
 }: PaginationProps) {
   if (pageCount <= 1) return null;
-
-  const href = (target: number) => {
-    const params = new URLSearchParams();
-    for (const [key, value] of Object.entries(searchParams)) {
-      if (value) params.set(key, value);
-    }
-    if (target > 1) params.set(pageParam, String(target));
-    else params.delete(pageParam);
-    const query = params.toString();
-    return query ? `${basePath}?${query}` : basePath;
-  };
 
   // A window of at most five pages that always contains the current one.
   const windowSize = Math.min(5, pageCount);
@@ -63,7 +48,7 @@ export function Pagination({
   return (
     <div
       className={cn(
-        "flex flex-col items-center justify-between gap-3 rounded-xl border border-border bg-card p-4 shadow-sm sm:flex-row",
+        "fastly-card flex flex-col items-center justify-between gap-3 bg-card p-3 sm:flex-row sm:p-4",
         className,
       )}
     >
@@ -73,71 +58,55 @@ export function Pagination({
         <span className="font-medium text-foreground">{totalItems}</span>
       </p>
 
+      {/*
+       * 44px targets on a phone, 36px from `sm`. The numbered buttons are
+       * hidden below `sm` — five 44px squares plus the arrows do not fit a
+       * 360px screen — and the "Page 2 of 7" line takes their place.
+       */}
       <nav aria-label="Pagination" className="flex items-center gap-1">
-        {page <= 1 ? (
-          <Button
-            variant="outline"
-            size="icon"
-            className="h-9 w-9"
-            disabled
-            aria-label="Previous page"
-          >
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-        ) : (
-          <Button
-            asChild
-            variant="outline"
-            size="icon"
-            className="h-9 w-9"
-            aria-label="Previous page"
-          >
-            <a href={href(page - 1)}>
-              <ChevronLeft className="h-4 w-4" />
-            </a>
-          </Button>
-        )}
+        <Button
+          type="button"
+          variant="outline"
+          size="icon"
+          className="h-11 w-11 sm:h-9 sm:w-9"
+          disabled={page <= 1}
+          aria-label="Previous page"
+          onClick={() => onPageChange(page - 1)}
+        >
+          <ChevronLeft className="h-4 w-4" />
+        </Button>
 
-        {pages.map((pageNumber) => (
-          <Button
-            key={pageNumber}
-            asChild
-            size="icon"
-            variant={pageNumber === page ? "default" : "ghost"}
-            className="h-9 w-9"
-          >
-            <a
-              href={href(pageNumber)}
+        <span className="px-2 text-sm text-muted-foreground sm:hidden">
+          Page {page} of {pageCount}
+        </span>
+
+        <span className="hidden items-center gap-1 sm:flex">
+          {pages.map((pageNumber) => (
+            <Button
+              key={pageNumber}
+              type="button"
+              size="icon"
+              variant={pageNumber === page ? "default" : "ghost"}
+              className="h-9 w-9"
               aria-current={pageNumber === page ? "page" : undefined}
+              onClick={() => onPageChange(pageNumber)}
             >
               {pageNumber}
-            </a>
-          </Button>
-        ))}
+            </Button>
+          ))}
+        </span>
 
-        {page >= pageCount ? (
-          <Button
-            variant="outline"
-            size="icon"
-            className="h-9 w-9"
-            disabled
-            aria-label="Next page"
-          >
-            <ChevronRight className="h-4 w-4" />
-          </Button>
-        ) : (
-          <Button
-            asChild
-            variant="outline"
-            size="icon"
-            className="h-9 w-9"
-            aria-label="Next page"
-          >
-            <a href={href(page + 1)}>
-              <ChevronRight className="h-4 w-4" />
-            </a>
-          </Button>
-        )}
+        <Button
+          type="button"
+          variant="outline"
+          size="icon"
+          className="h-11 w-11 sm:h-9 sm:w-9"
+          disabled={page >= pageCount}
+          aria-label="Next page"
+          onClick={() => onPageChange(page + 1)}
+        >
+          <ChevronRight className="h-4 w-4" />
+        </Button>
       </nav>
     </div>
   );

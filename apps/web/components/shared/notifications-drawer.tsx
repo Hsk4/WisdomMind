@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import { Bell } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -39,7 +40,7 @@ export function NotificationsDrawer({
           type="button"
           variant="ghost"
           size="icon"
-          className="relative"
+          className="relative h-11 w-11 text-white hover:bg-white/10 hover:text-white"
           aria-label={
             items.length ? `Notifications (${items.length})` : "Notifications"
           }
@@ -50,7 +51,7 @@ export function NotificationsDrawer({
           ) : null}
         </Button>
       </SheetTrigger>
-      <SheetContent side="right" className="w-[340px] p-0 sm:max-w-[380px]">
+      <SheetContent side="right" className="w-[340px] max-w-[90vw] p-0 sm:max-w-[380px]">
         <SheetHeader>
           <SheetTitle>Notifications</SheetTitle>
           <SheetDescription>
@@ -67,11 +68,16 @@ export function NotificationsDrawer({
           ) : (
             items.map((item) => (
               <li key={item.id}>
-                <a
+                {/*
+                 * `Link`, not `<a href>`: a plain anchor is a full page load,
+                 * which the Capacitor static export cannot serve — it bounced
+                 * the user back to sign-in.
+                 */}
+                <Link
                   href={item.href ?? "#"}
                   className={cn(
-                    "block rounded-lg border border-transparent px-3 py-2.5 transition-colors",
-                    "hover:border-border hover:bg-secondary",
+                    "block min-h-11 rounded-lg border border-transparent px-3 py-2.5 transition-colors",
+                    "hover:border-border hover:bg-secondary active:bg-secondary",
                   )}
                 >
                   <p className="text-sm font-medium text-foreground">
@@ -82,7 +88,7 @@ export function NotificationsDrawer({
                       {item.body}
                     </p>
                   ) : null}
-                </a>
+                </Link>
               </li>
             ))
           )}

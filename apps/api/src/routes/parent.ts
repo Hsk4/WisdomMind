@@ -45,9 +45,14 @@ studentParentLinkRoutes.post(
 
 export const parentLinkRoutes = Router();
 
+/*
+ * A super admin may redeem too: once as the office's test use, and — when the
+ * parent is at the desk — on the parent's behalf. The controller decides which
+ * of the two a given call is.
+ */
 parentLinkRoutes.post(
   "/parent/parent-links/redeem",
   auth(),
-  requireRole("parent"),
+  requireRole("parent", "super_admin"),
   asyncHandler(async (req, res) => ok(res, await redeemLinkCode(req))),
 );

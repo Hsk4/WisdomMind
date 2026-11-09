@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { api } from "@/lib/api-client";
+import { api, errorMessage } from "@/lib/api-client";
+import { SearchSelect } from "@/components/ui/search-select";
 
 export function ReassignForm({
   enrollmentId,
@@ -32,9 +33,7 @@ export function ReassignForm({
           setMessage("Reassigned.");
           onDone?.();
         } catch (error) {
-          setMessage(
-            error instanceof Error ? error.message : "Could not reassign",
-          );
+          setMessage(errorMessage(error, "Could not reassign"));
         } finally {
           setPending(false);
         }
@@ -44,24 +43,19 @@ export function ReassignForm({
         <label className="label" htmlFor={`teacher-${enrollmentId}`}>
           Move to
         </label>
-        <select
+        <SearchSelect
           id={`teacher-${enrollmentId}`}
-          className="input w-56"
-          value={teacherId}
-          onChange={(event) => setTeacherId(event.target.value)}
-          required
-        >
-          <option value="" disabled>
-            Choose a teacher
-          </option>
-          {teachers
+          name={`teacher-${enrollmentId}`}
+          className="w-56"
+          options={teachers
             .filter((teacher) => teacher.id !== currentTeacherId)
-            .map((teacher) => (
-              <option key={teacher.id} value={teacher.id}>
-                {teacher.name}
-              </option>
-            ))}
-        </select>
+            .map((teacher) => ({ value: teacher.id, label: teacher.name }))}
+          value={teacherId}
+          onChange={setTeacherId}
+          placeholder="Search teachers"
+          emptyLabel="Choose a teacher"
+          required
+        />
       </div>
       <button
         type="submit"

@@ -35,7 +35,6 @@ export const ROLE_HOME: Record<UserRole, string> = {
 /** The account as the gate sees it, before any record-level check. */
 export interface GateUser {
   id: string;
-  clerkId: string;
   email: string;
   name: string;
   role: UserRole | null;

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { useAsync } from "@/lib/use-async";
+import { useTableControls } from "@/lib/use-table-controls";
 import {
   Table,
   TableHeader,
@@ -13,6 +14,8 @@ import {
   TableCell,
 } from "@/components/ui/table";
 import { PageHeader, Card, Empty } from "@/components/ui/nila";
+import { ListToolbar } from "@/components/shared/list-toolbar";
+import { Pagination } from "@/components/shared/pagination";
 import { api } from "@/lib/api-client";
 import { BookForm } from "./book-ui";
 import { InlineLoading } from "@/components/shared/skeleton";
@@ -47,6 +50,13 @@ function BooksContent() {
     label: course.label,
   }));
 
+  // The API returns every book; search and paging happen here.
+  const table = useTableControls(books, {
+    searchText: (book) =>
+      `${book.title} ${book.author} ${book.courses.join(" ")}`,
+    pageSize: 25,
+  });
+
   return (
     <>
       <PageHeader
@@ -55,9 +65,18 @@ function BooksContent() {
       />
 
       <div className="grid gap-6 lg:grid-cols-[1fr_340px]">
-        <div>
+        <div className="space-y-4">
+          <ListToolbar
+            searchPlaceholder="Search title, author or course"
+            searchValue={table.searchInput}
+            onSearchChange={table.setSearchInput}
+            hasActiveFilters={table.hasActiveFilters}
+            onClear={table.clear}
+          />
           {books.length === 0 ? (
             <Empty>No books yet.</Empty>
+          ) : table.rows.length === 0 ? (
+            <Empty>No book matches. Try a different search.</Empty>
           ) : (
             <Card className="overflow-hidden">
               <Table>
@@ -69,7 +88,7 @@ function BooksContent() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {books.map((book) => (
+                  {table.rows.map((book) => (
                     <TableRow key={book.id}>
                       <TableCell>
                         <Link
@@ -111,6 +130,13 @@ function BooksContent() {
               </Table>
             </Card>
           )}
+          <Pagination
+            page={table.page}
+            pageCount={table.pageCount}
+            totalItems={table.matched}
+            pageSize={25}
+            onPageChange={table.setPage}
+          />
         </div>
 
         <Card className="h-fit p-5">

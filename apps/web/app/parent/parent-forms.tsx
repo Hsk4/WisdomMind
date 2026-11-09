@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { api } from "@/lib/api-client";
+import { api, errorMessage } from "@/lib/api-client";
 
 /**
  * Mutation forms take `onDone` from their page, which calls its own `reload`.
@@ -50,11 +50,7 @@ export function RequestMeetingForm({
             setMessage("Request sent to the teacher.");
             await refresh();
           } catch (requestError) {
-            setError(
-              requestError instanceof Error
-                ? requestError.message
-                : "Could not send the request",
-            );
+            setError(errorMessage(requestError, "Could not send the request"));
           }
         });
       }}

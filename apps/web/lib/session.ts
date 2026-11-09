@@ -13,6 +13,8 @@
 
 const TOKEN_KEY = "lms-auth-token";
 const USER_KEY = "lms-auth-user";
+/** Why the last session ended, read once by the sign-in page. */
+const NOTICE_KEY = "lms-auth-notice";
 
 /** Fired in this tab when the token is written or cleared. */
 const SESSION_CHANGED = "lms-auth-changed";
@@ -51,13 +53,27 @@ export function writeSession(token: string, user: StoredUser) {
   window.dispatchEvent(new Event(SESSION_CHANGED));
 }
 
-/** Drop the token and the cached profile. Safe to call when signed out. */
-export function clearSession() {
+/**
+ * Drop the token and the cached profile. Safe to call when signed out.
+ *
+ * `reason` is kept for the sign-in page: a session that ended because the
+ * account was opened on another phone should say so, not look like a crash.
+ */
+export function clearSession(reason?: string) {
   if (!isBrowser()) return;
   window.localStorage.removeItem(TOKEN_KEY);
   window.localStorage.removeItem(USER_KEY);
+  if (reason) window.localStorage.setItem(NOTICE_KEY, reason);
   // `storage` only fires in *other* tabs; this event covers this one.
   window.dispatchEvent(new Event(SESSION_CHANGED));
+}
+
+/** Read and forget the reason the last session ended. */
+export function takeSessionNotice(): string | null {
+  if (!isBrowser()) return null;
+  const reason = window.localStorage.getItem(NOTICE_KEY);
+  if (reason) window.localStorage.removeItem(NOTICE_KEY);
+  return reason;
 }
 
 /** Re-render subscribers when the session is written or cleared, in any tab. */

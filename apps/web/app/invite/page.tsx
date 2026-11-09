@@ -29,7 +29,8 @@ export default function LegacyInvitePage() {
           <Link href="/sign-in" className="btn btn-primary">
             Sign in
           </Link>
-          <Link href="/request" className="border border-border bg-card text-foreground shadow-sm hover:bg-secondary">
+          {/* `btn-secondary`: the bare class list had no height or padding. */}
+          <Link href="/request" className="btn btn-secondary">
             Request access
           </Link>
         </div>

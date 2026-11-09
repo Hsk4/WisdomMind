@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { api } from "@/lib/api-client";
+import { api, errorMessage } from "@/lib/api-client";
 import { useAuth } from "@/lib/auth-context";
 
 /**
@@ -50,11 +50,7 @@ export function RequestParentRoleButton({
                */
               router.push("/parent/link");
             } catch (requestError) {
-              setError(
-                requestError instanceof Error
-                  ? requestError.message
-                  : "Could not send the request",
-              );
+              setError(errorMessage(requestError, "Could not send the request"));
             }
           });
         }}

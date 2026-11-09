@@ -24,18 +24,26 @@ export function PageHeader({
   children?: ReactNode;
 }) {
   return (
-    <header className="mb-6 flex flex-wrap items-end justify-between gap-3">
-      <div>
+    <header className="mb-5 flex flex-wrap items-end justify-between gap-3 sm:mb-6">
+      <div className="min-w-0">
         {/* Fraunces for the page title, Inter for everything else. The topbar
             already carries the route name at `text-sm`, so this is one step up,
             not a second shout. */}
-        <h1 className="fastly-display text-xl text-ink">{title}</h1>
+        <h1 className="fastly-display text-lg text-ink sm:text-xl">{title}</h1>
         {description ? (
           <p className="mt-1.5 text-sm text-muted-foreground">{description}</p>
         ) : null}
       </div>
       {children ? (
-        <div className="flex flex-wrap items-center gap-2">{children}</div>
+        /*
+         * On a phone the actions sit below the title, full width, and share
+         * the row instead of wrapping one-per-line: a single 44px button
+         * stranded on its own line under a description read as a stray link.
+         * From `sm` they return to the end of the header, at content width.
+         */
+        <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
+          {children}
+        </div>
       ) : null}
     </header>
   );
