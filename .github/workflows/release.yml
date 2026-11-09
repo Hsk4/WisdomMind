@@ -43,14 +43,13 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
+      # `build:mobile` is what emits the static export into `out/`; a plain
+      # `build` is a server build and writes no `out/`, which makes `cap sync`
+      # fail. The script also pins NEXT_PUBLIC_API_URL from .env.production.
       - name: Build the web export
-        env:
-          # Baked into the bundle at build time; the APK talks to the same API
-          # as the web build.
-          NEXT_PUBLIC_API_URL: https://student-lms-1-g0xa.onrender.com/api/v1
         run: |
           bun run --cwd packages/shared build
-          bun run --cwd apps/web build
+          bun run --cwd apps/web build:mobile
 
       - name: Sync the export into the Android project
         run: bun run --cwd apps/web cap:sync
