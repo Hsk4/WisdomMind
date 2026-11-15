@@ -18,7 +18,8 @@ import {
   ArchIllustration,
   HourglassIllustration,
 } from "@/components/brand/illustrations";
-import { ArchTile, BrandMark, NAVY, StatusChip, Star } from "@/components/brand/primitives";
+import { ArchTile, NAVY, StatusChip } from "@/components/brand/primitives";
+import { BrandLogo } from "@/components/brand/wordmark";
 
 /**
  * The four Fastly phone screens, 390 × 844, drawn at 1:1 and framed in a
@@ -57,23 +58,9 @@ function SplashScreen() {
       >
         <div className="relative flex h-full flex-col items-center justify-center px-8 pb-20">
           <div className="flex flex-col items-center">
-            <div className="relative">
-              <BrandMark size={132} tone="light" star={false} />
-              {/* The star sits where the arch meets its point. */}
-              <svg
-                width="30"
-                height="30"
-                viewBox="0 0 24 24"
-                className="absolute left-1/2 top-0 -translate-x-1/2 -translate-y-1.5"
-                aria-hidden="true"
-              >
-                <Star cx={12} cy={12} r={9} />
-              </svg>
-            </div>
-            <p className="fastly-display mt-10 text-[44px] tracking-[-0.03em]">
-              fastly
-            </p>
-            <p className="mt-2 text-[13px] tracking-[0.02em] text-on-navy-soft">
+            {/* The lockup alone, as in the native splash artwork. */}
+            <BrandLogo size={228} />
+            <p className="mt-8 text-[13px] tracking-[0.02em] text-on-navy-soft">
               One school. Everyone in the loop.
             </p>
           </div>
@@ -130,7 +117,7 @@ function WelcomeScreen() {
         <div className="relative flex h-95 shrink-0 items-center justify-center bg-[#0a2540]">
           <div className="fastly-jaali absolute inset-0" aria-hidden="true" />
           <div className="relative flex items-center gap-4 px-6">
-            <BrandMark size={64} tone="light" />
+            <BrandLogo size={144} />
             <ArchIllustration className="h-95 w-58" />
           </div>
         </div>
@@ -233,10 +220,7 @@ function StudentHomeScreen() {
           <div className="relative">
             {/* Header: mark and bell. */}
             <div className="flex items-center justify-between px-6 pb-5 pt-5">
-              <div className="flex items-center gap-2.5">
-                <BrandMark size={32} tone="light" />
-                <span className="fastly-display text-[21px]">fastly</span>
-              </div>
+              <BrandLogo size={112} />
               <span className="relative inline-flex h-11 w-11 items-center justify-center rounded-full border-[1.5px] border-on-navy-line">
                 <Bell size={19} strokeWidth={1.7} className="text-white" />
                 <span
@@ -440,11 +424,8 @@ function WaitingScreen() {
       >
         <div className="fastly-jaali-tint absolute inset-0" aria-hidden="true" />
         <div className="relative flex h-full flex-col px-6">
-          <div className="flex items-center gap-2 pt-6">
-            <BrandMark size={28} tone="dark" />
-            <span className="fastly-display text-[18px] text-[#0a2540]">
-              fastly
-            </span>
+          <div className="flex items-center pt-6">
+            <BrandLogo size={104} />
           </div>
 
           <div className="flex flex-1 flex-col items-center justify-center pb-10 text-center">
@@ -650,8 +631,7 @@ export default function MobileScreensPage() {
               href="/"
               className="flex min-h-11 items-center gap-2.5 rounded-lg focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-gold"
             >
-              <BrandMark size={28} tone="light" />
-              <span className="fastly-display text-[19px]">fastly</span>
+              <BrandLogo size={108} />
             </Link>
             <span
               className="h-5 w-px bg-on-navy-line"

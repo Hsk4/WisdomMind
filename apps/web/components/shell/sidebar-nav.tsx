@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-import { BrandMark } from "@/components/brand/primitives";
+import { BrandLogo } from "@/components/brand/wordmark";
 import { navIcon } from "@/components/shell/nav-icons";
 import {
   isNavItemActive,
@@ -66,10 +66,11 @@ export function SidebarNav({
           onClick={onNavigate}
           className="mb-6 flex items-center gap-3 rounded-xl px-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold"
         >
-          <BrandMark size={36} tone="light" />
+          {/* The school's lockup on its cream tile; the panel name sits beside it. */}
+          <BrandLogo size={44} className="shrink-0 rounded-md" />
           <span className="min-w-0">
             <span className="fastly-display block truncate text-[17px] leading-tight text-white">
-              {label.name}
+              {schoolName}
             </span>
             <span className="block truncate text-[11px] text-on-navy-soft">
               {label.subtitle}
@@ -133,7 +134,7 @@ export function SidebarNav({
          * reads as a broken layout rather than a scrollable one.
          */}
         <p className="mt-auto shrink-0 border-t-[1.5px] border-on-navy-line px-3 pt-4 pb-1 text-[11px] leading-relaxed text-white/56">
-          {schoolName}
+          {label.subtitle}
         </p>
       </div>
     </div>

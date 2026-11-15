@@ -23,12 +23,12 @@ import { ArchIllustration, WaitingIllustration } from "./illustrations";
 import {
   ArchNumber,
   ArchTile,
-  BrandMark,
   Eyebrow,
   Jaali,
   Pill,
   StatusChip,
 } from "./primitives";
+import { BrandLogo } from "./wordmark";
 
 /* ------------------------------------------------------------- helpers */
 
@@ -483,9 +483,8 @@ function ProductPeek() {
           <div className="flex min-h-117.5">
             {/* Navy sidebar. */}
             <aside className="hidden w-46 shrink-0 flex-col gap-1 bg-[#0a2540] p-4 text-white sm:flex">
-              <div className="flex items-center gap-2.5 px-2 pb-5">
-                <BrandMark size={26} tone="light" />
-                <span className="fastly-display text-[18px]">fastly</span>
+              <div className="px-2 pb-5">
+                <BrandLogo size={112} />
               </div>
               {[
                 { label: "Home", icon: House, active: true },
@@ -923,14 +922,12 @@ function Footer() {
   return (
     <footer
       className="relative overflow-hidden bg-[#0a2540] text-white"
-      aria-label="Fastly"
+      aria-label="Wisdom Mind Academy"
     >
       <div className="mx-auto grid w-full max-w-300 gap-10 px-6 py-14 lg:grid-cols-[minmax(0,1.4fr)_repeat(3,minmax(0,1fr))] lg:px-10">
         <div>
-          <div className="flex items-center gap-2.5">
-            <BrandMark size={30} tone="light" />
-            <span className="fastly-display text-[22px]">fastly</span>
-          </div>
+          {/* The full lockup on its cream tile, as on the splash. */}
+          <BrandLogo size={128} />
           <p className="mt-4 max-w-[34ch] text-[14px] leading-relaxed text-on-navy-soft">
             A single-school learning platform for students, parents and teachers
             in Pakistan.
@@ -1057,10 +1054,9 @@ function SiteHeader() {
         <Link
           href="/"
           className="flex min-h-12 items-center gap-2.5 text-white"
-          aria-label="Fastly home"
+          aria-label="Wisdom Mind Academy home"
         >
-          <BrandMark size={30} tone="light" />
-          <span className="fastly-display text-[22px]">fastly</span>
+          <BrandLogo size={120} />
         </Link>
         <nav
           className="hidden items-center gap-1 text-[14px] text-on-navy-soft md:flex"

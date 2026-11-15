@@ -4,7 +4,7 @@ import * as React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-import { BrandMark } from "@/components/brand/primitives";
+import { BrandLogo } from "@/components/brand/wordmark";
 import { navIcon } from "@/components/shell/nav-icons";
 import {
   findNavItem,
@@ -102,10 +102,10 @@ export function PanelShell({
               {hasBottomTabs ? (
                 <Link
                   href={`/${panel}`}
-                  className="flex h-11 w-11 items-center justify-center lg:hidden"
-                  aria-label={`${label.name} home`}
+                  className="flex h-11 items-center justify-center lg:hidden"
+                  aria-label={`${label.subtitle} home`}
                 >
-                  <BrandMark size={28} tone="light" />
+                  <BrandLogo size={88} className="rounded-md" />
                 </Link>
               ) : (
                 <MobileNavSheet panel={panel} groups={groups} badges={badges} />

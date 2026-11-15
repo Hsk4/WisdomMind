@@ -5,12 +5,8 @@ import Link from "next/link";
 import { BookOpen, ChevronRight, GraduationCap, Users } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
-import {
-  ArchTile,
-  BrandMark,
-  type ArchTone,
-} from "@/components/brand/primitives";
-import { useSchoolName } from "@/lib/site-settings";
+import { ArchTile, type ArchTone } from "@/components/brand/primitives";
+import { BrandLogo } from "@/components/brand/wordmark";
 
 /**
  * The Capacitor entry screen: "Welcome. Who are you?".
@@ -89,7 +85,6 @@ export function NativeWelcome() {
   );
   // Remember the choice so the welcome does not push the landing beneath it.
   const [answered, setAnswered] = useState(false);
-  const schoolName = useSchoolName();
 
   // In a browser this renders nothing: the server already sent the landing
   // page, and swapping it for a second copy would be a hydration mismatch.
@@ -97,12 +92,14 @@ export function NativeWelcome() {
 
   return (
     <div className="fixed inset-0 z-50 flex min-h-screen flex-col bg-background">
-      {/* Top band: navy with the arch mark, as on the splash screen. */}
+      {/*
+       * Top band: navy with the lockup, matching the native splash so the
+       * hand-off from launch screen to first frame is seamless.
+       */}
       <div className="fastly-gate-band relative flex h-56 shrink-0 items-center justify-center">
         <span className="fastly-jaali absolute inset-0" aria-hidden="true" />
-        <div className="relative flex flex-col items-center gap-3 px-6 text-center">
-          <BrandMark size={64} tone="light" />
-          <p className="fastly-display text-[20px] text-white">{schoolName}</p>
+        <div className="relative flex items-center justify-center px-6">
+          <BrandLogo size={168} />
         </div>
       </div>
 

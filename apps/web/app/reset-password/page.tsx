@@ -4,7 +4,7 @@ import { Suspense, useState, type FormEvent } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 
-import { BrandMark } from "@/components/brand/primitives";
+import { BrandLogo } from "@/components/brand/wordmark";
 import { ThemeToggle } from "@/components/shell/page-actions";
 import { PasswordInput } from "@/components/ui/password-input";
 import { errorMessage } from "@/lib/api-client";
@@ -89,7 +89,7 @@ export default function ResetPasswordPage() {
           <ThemeToggle tone="onNavy" />
         </div>
         <div className="relative mx-auto flex w-full max-w-4xl flex-col items-center gap-2 px-4 py-10 text-center">
-          <BrandMark size={48} tone="light" />
+          <BrandLogo size={136} />
           <p className="fastly-display mt-2 text-[24px] text-white">
             Choose a new password
           </p>

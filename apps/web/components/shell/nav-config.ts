@@ -366,14 +366,20 @@ export function findNavItem(
     .sort((a, b) => b.href.length - a.href.length)[0];
 }
 
+/*
+ * The panel's own name is the subtitle; the product name above it is the
+ * school's (see `useSchoolName`), because a super admin can rename the school
+ * at any time and a hard-coded "Fastly LMS" beside a renamed sidebar footer
+ * read as two different products.
+ */
 export const PANEL_LABEL: Record<
   "admin" | "student" | "teacher" | "parent",
-  { name: string; subtitle: string }
+  { subtitle: string }
 > = {
-  admin: { name: "Fastly LMS", subtitle: "Admin console" },
-  student: { name: "Fastly LMS", subtitle: "Student panel" },
-  teacher: { name: "Fastly LMS", subtitle: "Teacher panel" },
-  parent: { name: "Fastly LMS", subtitle: "Parent panel" },
+  admin: { subtitle: "Admin console" },
+  student: { subtitle: "Student panel" },
+  teacher: { subtitle: "Teacher panel" },
+  parent: { subtitle: "Parent panel" },
 };
 
 /**

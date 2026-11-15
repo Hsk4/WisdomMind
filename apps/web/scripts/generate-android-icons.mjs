@@ -1,8 +1,10 @@
 /**
  * Generate the Android launcher icons and splash from the brand kit.
  *
- * Source of truth is `brand-kit/` at the repository root:
- *   png/icon-1024.png                          legacy + adaptive foreground/background
+ * Source of truth is `brand-kit/` at the repository root, regenerated from
+ * `newlogo.jpg` by `npm run brand:images`:
+ *   capacitor-assets/icon-only.png, icon-foreground.png, icon-background.png
+ *                                               legacy + adaptive layers
  *   capacitor-assets/splash.png, splash-dark.png  launch screen
  *
  * Writes into `android/app/src/main/res`. Re-run after a logo change, then
@@ -24,9 +26,14 @@ const repoRoot = path.resolve(webRoot, "../..");
 const resRoot = path.join(webRoot, "android/app/src/main/res");
 const brand = path.join(repoRoot, "brand-kit");
 
-const ICON = path.join(brand, "png/icon-1024.png");
+const ICON = path.join(brand, "capacitor-assets/icon-only.png");
+const ICON_FOREGROUND = path.join(brand, "capacitor-assets/icon-foreground.png");
+const ICON_BACKGROUND = path.join(brand, "capacitor-assets/icon-background.png");
 const SPLASH = path.join(brand, "capacitor-assets/splash.png");
 const SPLASH_DARK = path.join(brand, "capacitor-assets/splash-dark.png");
+
+/** Brand background used behind the adaptive icon (navy from the logo). */
+const ADAPTIVE_BACKGROUND = "#0E2B52";
 
 /** Legacy launcher icons are 48dp at these densities. */
 const ICON_SIZES = { mdpi: 48, hdpi: 72, xhdpi: 96, xxhdpi: 144, xxxhdpi: 192 };
@@ -56,8 +63,7 @@ const SPLASH_SIZES = {
   "drawable-land-xxxhdpi": [1920, 1280],
 };
 
-/** Brand background used behind the adaptive icon (navy from the brand kit). */
-const ADAPTIVE_BACKGROUND = "#1E3A8A";
+
 
 function playwrightCache() {
   // Playwright caches a full Chromium here; use it when Chrome is not installed.
@@ -134,7 +140,13 @@ function page({ size, background, image, inset = 0 }) {
 }
 
 async function main() {
-  for (const file of [ICON, SPLASH, SPLASH_DARK]) {
+  for (const file of [
+    ICON,
+    ICON_FOREGROUND,
+    ICON_BACKGROUND,
+    SPLASH,
+    SPLASH_DARK,
+  ]) {
     await fs.access(file).catch(() => {
       throw new Error(`Missing brand asset: ${file}`);
     });
@@ -161,10 +173,10 @@ async function main() {
 
   for (const [density, size] of Object.entries(ADAPTIVE_SIZES)) {
     const dir = path.join(resRoot, `mipmap-${density}`);
-    // Background layer: an opaque brand tile, because a transparent one lets
-    // each launcher pick its own tint behind the logo.
+    // Background layer: an opaque tile, because a transparent one lets each
+    // launcher pick its own tint behind the logo.
     await render(chrome, {
-      html: page({ size, background: ADAPTIVE_BACKGROUND, image: ICON }),
+      html: page({ size, background: "transparent", image: ICON_BACKGROUND }),
       width: size,
       height: size,
       out: path.join(dir, "ic_launcher_background.png"),
@@ -174,7 +186,7 @@ async function main() {
       html: page({
         size,
         background: "transparent",
-        image: ICON,
+        image: ICON_FOREGROUND,
         inset: Math.round(size * 0.19),
       }),
       width: size,
@@ -214,7 +226,7 @@ async function main() {
 <resources>
     <color name="ic_launcher_background">${ADAPTIVE_BACKGROUND}</color>
     <!-- Behind splash_image so tall screens never show white bars. -->
-    <color name="splash_background">#0A2540</color>
+    <color name="splash_background">${ADAPTIVE_BACKGROUND}</color>
 </resources>
 `,
     "utf8",

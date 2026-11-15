@@ -4,10 +4,9 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense } from "react";
 import { SignIn } from "@/lib/auth";
-import { BrandMark } from "@/components/brand/primitives";
+import { BrandLogo } from "@/components/brand/wordmark";
 import { ThemeToggle } from "@/components/shell/page-actions";
 import { Button } from "@/components/ui/button";
-import { useSchoolName } from "@/lib/site-settings";
 import { SignInNotice } from "./sign-in-notice";
 
 /**
@@ -47,7 +46,6 @@ function Body() {
    * what the account may see.
    */
   const role = search.get("role");
-  const schoolName = useSchoolName();
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
@@ -58,12 +56,14 @@ function Body() {
           <ThemeToggle tone="onNavy" />
         </div>
         <div className="relative mx-auto flex w-full max-w-4xl flex-col items-center gap-2 px-4 py-10 text-center sm:py-12">
-          <BrandMark size={52} tone="light" />
+          <BrandLogo size={152} />
           <p className="fastly-display mt-2 text-[26px] leading-tight text-white sm:text-[30px]">
             Welcome back
           </p>
+          {/* The lockup above already names the school, and the API may rename
+              it at any time — repeating it here went stale in the copy. */}
           <p className="max-w-[38ch] text-[13px] leading-relaxed text-on-navy-soft">
-            Sign in to {schoolName} to see your classes, work and fees.
+            Sign in to see your classes, work and fees.
           </p>
         </div>
       </header>
