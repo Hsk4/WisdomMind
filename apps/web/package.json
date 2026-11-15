@@ -12,6 +12,7 @@
     "lint": "eslint",
     "lint:colors": "node scripts/lint-colors.mjs",
     "icons:android": "node scripts/generate-android-icons.mjs",
+    "brand:images": "node scripts/generate-brand-images.mjs",
     "cap:sync": "cap sync",
     "cap:android": "cap open android",
     "cap:ios": "cap open ios"

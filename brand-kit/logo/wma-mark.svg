@@ -1,0 +1,89 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 640 640" role="img" aria-labelledby="wma-mark-title">
+  <title id="wma-mark-title">Wisdom Mind Academy</title>
+  <!--
+    Square app mark: the mortarboard, brain and open book from newlogo.jpg on
+    the brand navy tile. The tab icon, PWA icons and launcher PNGs are rendered
+    from the JPEG by `npm run brand:images`; this SVG is the same mark as a
+    crisp vector for `app/icon.svg` and `BrandLogoMark`.
+
+    The source draws the board as a navy outline round a white face, so it is
+    reproduced that way: a flat navy board would vanish into the navy tile.
+  -->
+  <!-- Corner radius is 22% so the same file works as a square and round mask. -->
+  <rect width="640" height="640" rx="140" fill="#0E2B52"/>
+  <!-- Faint jaali diamond behind the mark, the same motif as the site pattern. -->
+  <rect x="120" y="120" width="400" height="400" transform="rotate(45 320 320)"
+        fill="none" stroke="#FFFFFF" stroke-opacity="0.07" stroke-width="5"/>
+
+  <g>
+    <!-- Mortarboard: white face, navy edge, with the brain's arch cut out. -->
+    <defs>
+      <mask id="wma-board" maskUnits="userSpaceOnUse" x="0" y="0" width="640" height="640">
+        <rect width="640" height="640" fill="#FFFFFF"/>
+        <path d="M236 160 L404 160 L404 300 Q320 354 236 300 Z" fill="#000000"/>
+      </mask>
+    </defs>
+    <g mask="url(#wma-board)">
+      <path d="M320 46 L578 160 L320 274 L62 160 Z" fill="#FFFFFF"/>
+      <path d="M320 46 L578 160 L320 274 L62 160 Z" fill="none"
+            stroke="#0E2B52" stroke-width="24" stroke-linejoin="round"/>
+    </g>
+
+    <!-- Tassel off the board's right corner: navy cord, knot and fall. -->
+    <path d="M560 234 L566 270" fill="none" stroke="#0E2B52" stroke-width="13"
+          stroke-linecap="round"/>
+    <circle cx="567" cy="282" r="16" fill="#0E2B52"/>
+    <path d="M567 298 L572 448" fill="none" stroke="#0E2B52" stroke-width="28"
+          stroke-linecap="round"/>
+
+    <!-- Rays, three a side: orange, tapering towards the brain. -->
+    <g fill="none" stroke="#F5A623" stroke-width="14" stroke-linecap="round">
+      <path d="M198 238 L234 220"/>
+      <path d="M182 282 L226 282"/>
+      <path d="M198 326 L234 344"/>
+      <path d="M442 238 L406 220"/>
+      <path d="M458 282 L414 282"/>
+      <path d="M442 326 L406 344"/>
+    </g>
+
+    <!--
+      Brain: scalloped lobes (the bumps are what make it read as a brain, not a
+      shield) split by a wide white seam. Navy left, blue right, as in the
+      source. The lobes meet the cream rim drawn over both below.
+    -->
+    <g stroke="#FFF7E8" stroke-width="16" stroke-linejoin="round">
+      <path d="M314 158 C288 140 252 148 240 172 C212 176 196 200 204 226
+               C182 240 178 270 196 290 C180 312 190 344 214 354
+               C208 382 230 406 258 402 C268 424 296 428 310 408 Z"
+            fill="#0E2B52"/>
+      <path d="M326 158 C352 140 388 148 400 172 C428 176 444 200 436 226
+               C458 240 462 270 444 290 C460 312 450 344 426 354
+               C432 382 410 406 382 402 C372 424 344 428 330 408 Z"
+            fill="#1268D8"/>
+    </g>
+    <!-- The seam: white, straight, full height, slightly narrower at the ends. -->
+    <path d="M320 150 L320 416" fill="none" stroke="#FFFFFF" stroke-width="18"
+          stroke-linecap="butt"/>
+
+    <!-- Folds: open hooks with a rounded end, gold-tipped in the source. -->
+    <g fill="none" stroke="#FFFFFF" stroke-width="15" stroke-linecap="round">
+      <path d="M286 196 C266 198 258 220 272 234 C284 246 302 240 306 228"/>
+      <path d="M288 254 C260 258 252 288 274 302 C292 312 308 300 308 288"/>
+      <path d="M290 316 C268 322 264 344 280 356 L306 356"/>
+      <path d="M354 196 C374 198 382 220 368 234 C356 246 338 240 334 228"/>
+      <path d="M352 254 C380 258 388 288 366 302 C348 312 332 300 332 288"/>
+      <path d="M350 316 C372 322 376 344 360 356 L334 356"/>
+    </g>
+
+    <!-- Open book: blue pages folded over navy covers, spine at the centre. -->
+    <path d="M320 404 C268 378 204 378 156 408 C174 444 244 452 320 434 Z"
+          fill="#1268D8"/>
+    <path d="M320 404 C372 378 436 378 484 408 C466 444 396 452 320 434 Z"
+          fill="#1268D8"/>
+    <path d="M318 434 C248 458 176 450 150 420 C148 454 190 478 254 484
+             L318 466 Z" fill="#0E2B52"/>
+    <path d="M322 434 C392 458 464 450 490 420 C492 454 450 478 386 484
+             L322 466 Z" fill="#0E2B52"/>
+    <path d="M320 436 L320 470" fill="none" stroke="#0E2B52" stroke-width="8"/>
+  </g>
+</svg>

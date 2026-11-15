@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="480" viewBox="0 0 640 480" role="img" aria-labelledby="wma-lockup-title">
+  <title id="wma-lockup-title">Wisdom Mind Academy</title>
+  <!--
+    Vector redraw of newlogo.jpg (source art: repository root). The JPEG is the
+    master; this is the crisp, scalable version used in the header, the footer
+    and the splash. Same geometry, same colours:
+      navy   #0E2B52 (arch and wordmark)
+      gold   #D4AF6A (inner arch line, "MIND ACADEMY" and the two rules)
+      paper  #FFFFFF
+  -->
+  <rect width="640" height="480" fill="#FFFFFF"/>
+
+  <!-- Arch: outer stroke, then the inner gold line. -->
+  <path d="M146 392 V250 C146 176 206 122 280 74 C354 122 414 176 414 250 V392"
+        fill="none" stroke="#0E2B52" stroke-width="22" stroke-linecap="butt"/>
+  <path d="M182 384 V254 C182 192 228 148 280 112 C332 148 378 192 378 254 V384"
+        fill="none" stroke="#D4AF6A" stroke-width="6"/>
+
+  <!-- Book: navy covers with gold ribs, white pages and a navy spine. -->
+  <path d="M160 292 L280 268 L400 292 L400 358 L280 334 L160 358 Z" fill="#0E2B52"/>
+  <path d="M186 277 L280 258 L374 277 L374 287 L280 268 L186 287 Z" fill="#D4AF6A"/>
+  <path d="M280 268 L400 292 L400 358 L280 334 Z" fill="#F2F2F0"/>
+  <path d="M280 274 L394 297 L394 306 L280 283 Z" fill="#D4AF6A" fill-opacity="0.55"/>
+  <path d="M280 291 L394 314 L394 323 L280 300 Z" fill="#D4AF6A" fill-opacity="0.55"/>
+  <path d="M280 308 L394 331 L394 340 L280 317 Z" fill="#D4AF6A" fill-opacity="0.55"/>
+  <path d="M280 268 L280 334" stroke="#0E2B52" stroke-width="10" stroke-linecap="round"/>
+
+  <!-- Gold rules above and below the wordmark. -->
+  <rect x="196" y="398" width="168" height="4" fill="#D4AF6A"/>
+  <rect x="212" y="470" width="136" height="4" fill="#D4AF6A"/>
+
+  <!-- Wordmark: WISDOM / MIND ACADEMY. -->
+  <g font-family="Georgia, 'Times New Roman', serif" text-anchor="middle">
+    <text x="280" y="436" font-size="48" fill="#0E2B52"
+          textLength="196" lengthAdjust="spacingAndGlyphs">WISDOM</text>
+    <text x="280" y="462" font-size="16" fill="#D4AF6A"
+          textLength="188" lengthAdjust="spacingAndGlyphs">MIND ACADEMY</text>
+  </g>
+</svg>

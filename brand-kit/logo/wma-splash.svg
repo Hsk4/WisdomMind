@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="1920" viewBox="0 0 1280 1920" role="img" aria-labelledby="wma-splash-title">
+  <title id="wma-splash-title">Wisdom Mind Academy</title>
+  <!--
+    Native splash artwork: the full lockup, centred on brand navy, with the
+    jaali diamond used behind the app mark. Rendered by the icon generator to
+    every Android drawable-port-* / drawable-land-* density, and exported as
+    brand-kit/capacitor-assets/splash.png for @capacitor/assets.
+  -->
+  <rect width="1280" height="1920" fill="#0E2B52"/>
+  <g fill="none" stroke="#FFFFFF" stroke-opacity="0.06" stroke-width="3">
+    <rect x="400" y="720" width="480" height="480" transform="rotate(45 640 960)"/>
+    <rect x="530" y="850" width="220" height="220" transform="rotate(45 640 960)"/>
+  </g>
+
+  <g transform="translate(320 750)">
+    <g transform="scale(1)">
+      <path d="M146 392 V250 C146 176 206 122 280 74 C354 122 414 176 414 250 V392"
+            fill="#FFFFFF" stroke="#F6F1E7" stroke-width="22"/>
+      <path d="M182 384 V254 C182 192 228 148 280 112 C332 148 378 192 378 254 V384"
+            fill="none" stroke="#D4AF6A" stroke-width="6"/>
+      <path d="M280 268 L400 292 L400 358 L280 334 Z" fill="#F2F2F0"/>
+      <path d="M280 274 L394 297 L394 306 L280 283 Z" fill="#D4AF6A" fill-opacity="0.55"/>
+      <path d="M280 291 L394 314 L394 323 L280 300 Z" fill="#D4AF6A" fill-opacity="0.55"/>
+      <path d="M280 308 L394 331 L394 340 L280 317 Z" fill="#D4AF6A" fill-opacity="0.55"/>
+      <path d="M160 292 L280 268 L400 292 L400 358 L280 334 L160 358 Z" fill="#0E2B52"/>
+      <path d="M186 277 L280 258 L374 277 L374 287 L280 268 L186 287 Z" fill="#D4AF6A"/>
+      <path d="M280 268 L280 334" stroke="#D4AF6A" stroke-width="10" stroke-linecap="round"/>
+      <rect x="196" y="398" width="168" height="4" fill="#D4AF6A"/>
+      <rect x="212" y="470" width="136" height="4" fill="#D4AF6A"/>
+      <g font-family="Georgia, 'Times New Roman', serif" text-anchor="middle">
+        <text x="280" y="440" font-size="48" fill="#FFFFFF"
+              textLength="196" lengthAdjust="spacingAndGlyphs">WISDOM</text>
+        <text x="280" y="466" font-size="16" fill="#D4AF6A"
+              textLength="188" lengthAdjust="spacingAndGlyphs">MIND ACADEMY</text>
+      </g>
+    </g>
+  </g>
+</svg>

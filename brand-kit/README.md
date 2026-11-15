@@ -1,6 +1,16 @@
-# Fastly brand kit
+# Brand kit
+
+The logo in use is Wisdom Mind Academy (`newlogo.jpg`, repository root).
+`logo/wma-lockup.svg` is its vector master; every icon, favicon, splash and
+social image is rendered from the three `wma-*.svg` files by
+`apps/web/scripts/generate-brand-images.mjs` (`npm run brand:images` in
+`apps/web`). The Fastly files below are the earlier identity and are kept only
+for reference.
 
 ```
+logo/wma-lockup.svg   arch, book and wordmark — headers, footer, OG card
+logo/wma-mark.svg     square navy tile, arch and book — favicon, PWA, launcher
+logo/wma-splash.svg   full lockup on navy — native splash
 logo/               mark (cobalt, navy, white, mono), lockups, stacked, favicon: all SVG, wordmark outlined from Fraunces
 patterns/           jaali-light.svg, jaali-dark.svg (tile, 56 px repeat)
 illustrations/      hero-arch, role-student, role-teacher, role-parent, pending-arch
@@ -11,13 +21,22 @@ PROMPTS.md          design-tool, image-generator and logo-exploration prompts
 
 ## Where things go in `Student_lms_1`
 
-1. **Static files.** Copy `logo/`, `patterns/`, `illustrations/` into `apps/web/public/brand/`.
-   Favicon and share images use Next's file convention: `apps/web/app/icon.svg` (the favicon SVG),
-   `apps/web/app/apple-icon.png` (apple-touch-180), `apps/web/app/opengraph-image.png` (og-1200x630).
-2. **Android icon and splash.** Copy `capacitor-assets/*` to `apps/web/assets/`, then in `apps/web`:
-   `bunx @capacitor/assets generate --android`, followed by `bun run cap:sync`.
-   This replaces the default launcher icons in `android/app/src/main/res`. Add `@capacitor/splash-screen`
-   if you want the native splash to show.
+1. **Static files.** `logo/`, `patterns/`, `illustrations/` live in `apps/web/public/brand/`.
+   Favicon and share images use Next's file convention: `apps/web/app/icon.svg` + `icon.png`,
+   `favicon.ico` (16/32/48), `apple-icon.png` (180), `opengraph-image.png` (1200×630).
+   `icon.svg` is the vector mark; the PNGs and the `.ico` are cropped from the
+   emblem in `newlogo.jpg` (above the "WISDOM MIND" line, so it stays legible at
+   16px). On screen the lockup is `components/brand/wordmark.tsx` (`BrandLogo`),
+   the same artwork inline, so headers never depend on a fetch of the SVG.
+   The installable-app icons live in `apps/web/public/icons/` and are listed by
+   `apps/web/app/manifest.ts`.
+   Regenerate all of them from the `logo/wma-*.svg` masters with `npm run brand:images`
+   (run from `apps/web`), which needs `sharp` — already present via Next.
+2. **Android icon and splash.** `npm run icons:android` (also from `apps/web`) renders
+   `png/wma-icon-1024.png` and `capacitor-assets/splash.png` into every
+   `android/app/src/main/res/mipmap-*` and `drawable-*` density, which is what
+   `AndroidManifest.xml` and the `AppTheme.NoActionBarLaunch` theme point at.
+   `@capacitor/assets` is not installed, so that step is not used.
 3. **Tokens in `app/globals.css`.**
    - `--navy` is currently `var(--primary)`. Decouple it first: `--navy: #0A2540;`. Otherwise the next step turns the sidebar blue.
    - Then `--primary: #1E4DB7; --primary-hover: #173D94;`.

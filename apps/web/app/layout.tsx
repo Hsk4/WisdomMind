@@ -41,6 +41,28 @@ export const metadata: Metadata = {
   title: `${SCHOOL_NAME} — One school. Everyone in the loop.`,
   description:
     "A single-school learning platform for students, parents and teachers.",
+  /**
+   * The logo, at every size a browser asks for: `icon.svg` is the square mark
+   * (`brand-kit/logo/wma-mark.svg`), and `icon.png`, `apple-icon.png` and
+   * `favicon.ico` (16/32/48) are the same mark rendered from the emblem in
+   * `newlogo.jpg` at the root of the repository. All of them come from
+   * `npm run brand:images`.
+   */
+  icons: {
+    icon: [
+      { url: "/icon.svg", type: "image/svg+xml" },
+      { url: "/icon.png", sizes: "512x512", type: "image/png" },
+      { url: "/favicon.ico", sizes: "16x16 32x32 48x48" },
+    ],
+    apple: [{ url: "/apple-icon.png", sizes: "180x180" }],
+  },
+  manifest: "/manifest.webmanifest",
+  appleWebApp: {
+    title: SCHOOL_NAME,
+    capable: true,
+    /** The splash is navy; a white status bar would cut the lockup in two. */
+    statusBarStyle: "black-translucent",
+  },
 };
 
 /** `viewport-fit=cover` lets the native shell draw under the status bar. */
