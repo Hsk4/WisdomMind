@@ -8,7 +8,13 @@ import { users } from "@/db/schema";
 import { createApp } from "@/app";
 import { createLocalSessionToken, localTokenVerifier } from "@/middleware/auth";
 import { verifyPassword } from "@/lib/password";
-import { authHeader, resetDb, seedUser, testVerifier } from "./helpers";
+import {
+  accountId,
+  authHeader,
+  resetDb,
+  seedUser,
+  testVerifier,
+} from "./helpers";
 
 let app: Express;
 
@@ -120,7 +126,10 @@ describe("deleted accounts", () => {
       .set(authHeader("ghost_1"));
     expect(blocked.status).toBe(401);
 
-    const rows = await db.select().from(users).where(eq(users.id, "ghost_1"));
+    // Query the account the token names, so the emptiness means something.
+    const ghostId = accountId("ghost_1");
+    expect(ghostId).toMatch(/^[0-9a-f-]{36}$/);
+    const rows = await db.select().from(users).where(eq(users.id, ghostId));
     expect(rows).toHaveLength(0);
   });
 });
@@ -146,15 +155,16 @@ describe("local JWT auth", () => {
   });
 
   it("revokes previously issued JWTs when the account session version changes", async () => {
-    await seedUser({ clerkId: "session-reset-user", role: "student" });
+    const user = await seedUser({ clerkId: "session-reset-user", role: "student" });
+    // The token's subject is the row's uuid, exactly as sign-in issues it.
     const token = createLocalSessionToken({
-      sub: "session-reset-user",
+      sub: user.id,
       sessionVersion: 0,
     });
     await db
       .update(users)
       .set({ sessionVersion: 1 })
-      .where(eq(users.id, "session-reset-user"));
+      .where(eq(users.id, user.id));
 
     try {
       const jwtApp = createApp({ verifyToken: localTokenVerifier() });

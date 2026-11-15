@@ -136,7 +136,11 @@ describe("access requests", () => {
   });
 
   it("rejects a second application from the same account as a conflict", async () => {
-    await seedUser({ clerkId: "applicant_2", status: "pending", role: null });
+    const applicant = await seedUser({
+      clerkId: "applicant_2",
+      status: "pending",
+      role: null,
+    });
 
     const first = await request(app)
       .post("/api/v1/me/request")
@@ -149,7 +153,7 @@ describe("access requests", () => {
     const [row] = await db
       .select()
       .from(users)
-      .where(eq(users.id, "applicant_2"));
+      .where(eq(users.id, applicant.id));
     expect(row.role).toBeNull();
     expect(row.status).toBe("pending");
   });

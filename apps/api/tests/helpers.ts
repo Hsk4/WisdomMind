@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { sql } from "drizzle-orm";
 import { db } from "@/db";
 import { users } from "@/db/schema";
@@ -40,16 +41,31 @@ const TABLES = [
 
 export async function resetDb(): Promise<void> {
   await db.execute(sql.raw(`TRUNCATE TABLE ${TABLES.join(", ")} CASCADE`));
+  // The rows are gone, so the next test's "student_1" is a new account.
+  ids.clear();
 }
 
 /**
  * Tokens name an account id: the token's `sub` is the local `users.id`.
  *
  * Tests still call the seed key a `clerkId` because that is the name every
- * existing test uses; it is just a label for the account, and `seedUser` makes
- * it the row's id so `authHeader("student_1")` resolves to that row.
+ * existing test uses, but it is only a label — `users.id` is a `uuid` column
+ * with foreign keys pointing at it, so the label is mapped to a real UUID here.
+ * `tokenFor("student_1")` therefore yields that account's UUID, never the
+ * label, which is what makes `authHeader("student_1")` resolve to its row.
  */
-export const tokenFor = (accountId: string) => `test-token-${accountId}`;
+const ids = new Map<string, string>();
+
+export function accountId(label: string): string {
+  const existing = ids.get(label);
+  if (existing) return existing;
+  const created = randomUUID();
+  ids.set(label, created);
+  return created;
+}
+
+export const tokenFor = (accountIdOrLabel: string) =>
+  `test-token-${accountId(accountIdOrLabel)}`;
 
 export const testVerifier: TokenVerifier = async (token) => {
   if (!token.startsWith("test-token-")) throw new Error("bad token");
@@ -71,11 +87,12 @@ type SeedUser = {
 };
 
 export async function seedUser(input: SeedUser) {
+  // Re-seeding the same label in one test reuses its id, as `tokenFor` does.
+  const id = accountId(input.clerkId);
   const [row] = await db
     .insert(users)
     .values({
-      // The seed key is the row id, so a token minted from it resolves.
-      id: input.clerkId,
+      id,
       name: input.name ?? input.clerkId,
       email: input.email ?? `${input.clerkId}@example.com`,
       role: input.role ?? null,

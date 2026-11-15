@@ -346,7 +346,11 @@ describe("admin review", () => {
   });
 
   it("approving still assigns the role and closes the request", async () => {
-    await seedUser({ clerkId: "p_approve", status: "pending", role: null });
+    const applicant = await seedUser({
+      clerkId: "p_approve",
+      status: "pending",
+      role: null,
+    });
     const admin = await seedUser({
       clerkId: "admin_4",
       role: "admin",
@@ -371,7 +375,7 @@ describe("admin review", () => {
     const [account] = await db
       .select()
       .from(users)
-      .where(eq(users.id, "p_approve"));
+      .where(eq(users.id, applicant.id));
     expect(account.role).toBe("parent");
     expect(account.status).toBe("active");
   });
