@@ -99,7 +99,7 @@ export function NativeWelcome() {
       <div className="fastly-gate-band relative flex h-56 shrink-0 items-center justify-center">
         <span className="fastly-jaali absolute inset-0" aria-hidden="true" />
         <div className="relative flex items-center justify-center px-6">
-          <BrandLogo size={168} />
+          <BrandLogo size={168} tone="dark" />
         </div>
       </div>
 

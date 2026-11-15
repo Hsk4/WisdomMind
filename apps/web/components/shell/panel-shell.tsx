@@ -105,7 +105,7 @@ export function PanelShell({
                   className="flex h-11 items-center justify-center lg:hidden"
                   aria-label={`${label.subtitle} home`}
                 >
-                  <BrandLogo size={88} className="rounded-md" />
+                  <BrandLogo size={88} tone="dark" className="rounded-md" />
                 </Link>
               ) : (
                 <MobileNavSheet panel={panel} groups={groups} badges={badges} />

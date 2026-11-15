@@ -87,7 +87,7 @@ export function GateShell({
               href="/"
               className="flex items-center gap-2.5 rounded-lg focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-gold"
             >
-              <BrandLogo size={96} className="rounded-md" />
+              <BrandLogo size={96} tone="dark" className="rounded-md" />
               <span className="fastly-display text-[18px] text-white">
                 {schoolName}
               </span>

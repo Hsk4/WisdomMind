@@ -59,7 +59,7 @@ function SplashScreen() {
         <div className="relative flex h-full flex-col items-center justify-center px-8 pb-20">
           <div className="flex flex-col items-center">
             {/* The lockup alone, as in the native splash artwork. */}
-            <BrandLogo size={228} />
+            <BrandLogo size={228} tone="dark" />
             <p className="mt-8 text-[13px] tracking-[0.02em] text-on-navy-soft">
               One school. Everyone in the loop.
             </p>
@@ -117,7 +117,7 @@ function WelcomeScreen() {
         <div className="relative flex h-95 shrink-0 items-center justify-center bg-[#0a2540]">
           <div className="fastly-jaali absolute inset-0" aria-hidden="true" />
           <div className="relative flex items-center gap-4 px-6">
-            <BrandLogo size={144} />
+            <BrandLogo size={144} tone="dark" />
             <ArchIllustration className="h-95 w-58" />
           </div>
         </div>
@@ -220,7 +220,7 @@ function StudentHomeScreen() {
           <div className="relative">
             {/* Header: mark and bell. */}
             <div className="flex items-center justify-between px-6 pb-5 pt-5">
-              <BrandLogo size={112} />
+              <BrandLogo size={112} tone="dark" />
               <span className="relative inline-flex h-11 w-11 items-center justify-center rounded-full border-[1.5px] border-on-navy-line">
                 <Bell size={19} strokeWidth={1.7} className="text-white" />
                 <span
@@ -425,7 +425,7 @@ function WaitingScreen() {
         <div className="fastly-jaali-tint absolute inset-0" aria-hidden="true" />
         <div className="relative flex h-full flex-col px-6">
           <div className="flex items-center pt-6">
-            <BrandLogo size={104} />
+            <BrandLogo size={104} tone="dark" />
           </div>
 
           <div className="flex flex-1 flex-col items-center justify-center pb-10 text-center">
@@ -631,7 +631,7 @@ export default function MobileScreensPage() {
               href="/"
               className="flex min-h-11 items-center gap-2.5 rounded-lg focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-gold"
             >
-              <BrandLogo size={108} />
+              <BrandLogo size={108} tone="dark" />
             </Link>
             <span
               className="h-5 w-px bg-on-navy-line"

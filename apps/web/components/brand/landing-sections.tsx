@@ -246,7 +246,7 @@ function ThreeDoors() {
       <div className="mx-auto w-full max-w-300 px-6 lg:px-10">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <Eyebrow>How Fastly works</Eyebrow>
+            <Eyebrow>How WisdomMind works</Eyebrow>
             <h2
               id="doors-title"
               className="fastly-display mt-3 text-[32px] text-[#0a2540] sm:text-[42px]"
@@ -484,7 +484,7 @@ function ProductPeek() {
             {/* Navy sidebar. */}
             <aside className="hidden w-46 shrink-0 flex-col gap-1 bg-[#0a2540] p-4 text-white sm:flex">
               <div className="px-2 pb-5">
-                <BrandLogo size={112} />
+                <BrandLogo size={112} tone="dark" />
               </div>
               {[
                 { label: "Home", icon: House, active: true },
@@ -638,7 +638,7 @@ function BrowserFrame({ children }: { children: React.ReactNode }) {
             className="text-[#1e4db7]"
             aria-hidden="true"
           />
-          app.fastly.pk / student / home
+          app.wisdommind.pk / student / home
         </span>
       </div>
       {children}
@@ -723,7 +723,7 @@ const PARENT_STEPS = [
   {
     n: "01",
     title: "Ask your child",
-    body: 'They open Fastly, tap "Link a parent" and a six-character code appears.',
+    body: 'They open WisdomMind, tap "Link a parent" and a six-character code appears.',
   },
   {
     n: "02",
@@ -926,8 +926,8 @@ function Footer() {
     >
       <div className="mx-auto grid w-full max-w-300 gap-10 px-6 py-14 lg:grid-cols-[minmax(0,1.4fr)_repeat(3,minmax(0,1fr))] lg:px-10">
         <div>
-          {/* The full lockup on its cream tile, as on the splash. */}
-          <BrandLogo size={128} />
+          {/* The full lockup, white on navy, as on the splash. */}
+          <BrandLogo size={128} tone="dark" />
           <p className="mt-4 max-w-[34ch] text-[14px] leading-relaxed text-on-navy-soft">
             A single-school learning platform for students, parents and teachers
             in Pakistan.
@@ -990,7 +990,7 @@ function Footer() {
 
       <div className="border-t-[1.5px] border-on-navy-line">
         <div className="mx-auto flex w-full max-w-300 flex-col gap-2 px-6 py-6 text-[12px] text-on-navy-soft sm:flex-row sm:items-center sm:justify-between lg:px-10">
-          <p>© 2026 Fastly. Built for schools in Pakistan.</p>
+          <p>© 2026 WisdomMind. Built for schools in Pakistan.</p>
           <div className="flex items-center gap-2">
             <Link
               href="/mobile"
@@ -1056,7 +1056,7 @@ function SiteHeader() {
           className="flex min-h-12 items-center gap-2.5 text-white"
           aria-label="Wisdom Mind Academy home"
         >
-          <BrandLogo size={120} />
+          <BrandLogo size={120} tone="dark" />
         </Link>
         <nav
           className="hidden items-center gap-1 text-[14px] text-on-navy-soft md:flex"

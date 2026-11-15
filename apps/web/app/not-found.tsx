@@ -15,7 +15,7 @@ export default function NotFound() {
       <header className="fastly-gate-band relative overflow-hidden">
         <span className="fastly-jaali absolute inset-0" aria-hidden="true" />
         <div className="relative mx-auto flex w-full max-w-4xl flex-col items-center gap-2 px-4 py-12 text-center">
-          <BrandLogo size={152} />
+          <BrandLogo size={152} tone="dark" />
           <p className="fastly-display mt-2 text-[24px] text-white">
             Page not found
           </p>

@@ -56,7 +56,7 @@ function Body() {
           <ThemeToggle tone="onNavy" />
         </div>
         <div className="relative mx-auto flex w-full max-w-4xl flex-col items-center gap-2 px-4 py-10 text-center sm:py-12">
-          <BrandLogo size={152} />
+          <BrandLogo size={152} tone="dark" />
           <p className="fastly-display mt-2 text-[26px] leading-tight text-white sm:text-[30px]">
             Welcome back
           </p>

@@ -10,6 +10,3 @@
  */
 export const SCHOOL_NAME =
   process.env.NEXT_PUBLIC_SCHOOL_NAME?.trim() || "Wisdom Mind";
-
-/** Public product name — the platform, not the school. */
-export const PRODUCT_NAME = "Fastly";

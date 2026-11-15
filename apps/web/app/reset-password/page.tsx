@@ -89,7 +89,7 @@ export default function ResetPasswordPage() {
           <ThemeToggle tone="onNavy" />
         </div>
         <div className="relative mx-auto flex w-full max-w-4xl flex-col items-center gap-2 px-4 py-10 text-center">
-          <BrandLogo size={136} />
+          <BrandLogo size={136} tone="dark" />
           <p className="fastly-display mt-2 text-[24px] text-white">
             Choose a new password
           </p>
