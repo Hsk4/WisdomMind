@@ -29,6 +29,42 @@ export async function listCourseIdsForTeacher(
   return rows.map((row) => row.courseId);
 }
 
+/**
+ * The course catalog with the active teachers on each course — the shape the
+ * admin assignment screen needs. Built from the same two reads its parts use:
+ * `teacher_courses` is indexed on `course_id`, so the reverse map is one
+ * grouped read rather than a walk over every teacher.
+ */
+export async function getTeacherCourseAssignments(conn: Tx | typeof db = db) {
+  const [courseRows, links, labels] = await Promise.all([
+    conn
+      .select({ id: courses.id, subjectId: courses.subjectId })
+      .from(courses)
+      .where(eq(courses.active, true)),
+    listTeacherCourseLinks(conn),
+    listCourseLabels({ active: true }, conn),
+  ]);
+
+  const labelById = new Map(labels.map((label) => [label.id, label.label]));
+  const teacherIdsByCourse = new Map<Id, Id[]>();
+  for (const [teacherId, courseIds] of links) {
+    for (const courseId of courseIds) {
+      const current = teacherIdsByCourse.get(courseId);
+      if (current) current.push(teacherId);
+      else teacherIdsByCourse.set(courseId, [teacherId]);
+    }
+  }
+
+  return courseRows.map((row) => ({
+    id: row.id,
+    label: labelById.get(row.id) ?? "Course",
+    // Lets the approval screen pre-tick the courses for the subjects an
+    // applicant said they teach, without a second round trip.
+    subjectId: row.subjectId,
+    teacherIds: teacherIdsByCourse.get(row.id) ?? [],
+  }));
+}
+
 /** teacherId → courseIds, for the admin assignment table. */
 export async function listTeacherCourseLinks(
   conn: Tx | typeof db = db,

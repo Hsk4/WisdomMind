@@ -59,7 +59,7 @@ import {
   setSubjectActive,
   updateSubject,
 } from "@/db/queries/subjects";
-import { getTeacherCourseAssignments } from "@/db/queries/teacher";
+import { getTeacherCourseAssignments } from "@/db/queries/teacher-courses";
 import { countBooksByCourse } from "@/db/queries/books";
 
 /**
