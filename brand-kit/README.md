@@ -4,18 +4,19 @@ The logo in use is Wisdom Mind Academy (`newlogo.jpg`, repository root).
 `logo/wma-lockup.svg` is its vector master; every icon, favicon, splash and
 social image is rendered from the three `wma-*.svg` files by
 `apps/web/scripts/generate-brand-images.mjs` (`npm run brand:images` in
-`apps/web`). The Fastly files below are the earlier identity and are kept only
-for reference.
+`apps/web`). The earlier "Fastly" identity has been removed: there is one
+logo, the Wisdom Mind one.
 
 ```
 logo/wma-lockup.svg   arch, book and wordmark — headers, footer, OG card
 logo/wma-mark.svg     square navy tile, arch and book — favicon, PWA, launcher
 logo/wma-splash.svg   full lockup on navy — native splash
-logo/               mark (cobalt, navy, white, mono), lockups, stacked, favicon: all SVG, wordmark outlined from Fraunces
 patterns/           jaali-light.svg, jaali-dark.svg (tile, 56 px repeat)
 illustrations/      hero-arch, role-student, role-teacher, role-parent, pending-arch
 png/                icon-1024, android adaptive fg/bg 432, pwa 192/512, apple-touch-180, favicon 32/48, og-1200x630, hero-arch-1280
-capacitor-assets/   icon-only, icon-foreground, icon-background, splash, splash-dark (input for @capacitor/assets)
+capacitor-assets/   icon-only, icon-foreground (transparent), icon-background
+                    (flat navy), splash, splash-dark — input for
+                    `scripts/generate-android-icons.mjs`
 PROMPTS.md          design-tool, image-generator and logo-exploration prompts
 ```
 
