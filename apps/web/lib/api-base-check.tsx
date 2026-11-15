@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { usePathname } from "next/navigation";
-import { apiBaseUrl } from "@/lib/auth";
+import { apiBaseUrl } from "@/lib/api-client";
 
 /**
  * Build sanity check, run once in the browser.

@@ -6,6 +6,7 @@ import { LogOut, Settings, UserRound } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/lib/auth-context";
+import { readStoredUser } from "@/lib/session";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -110,6 +111,42 @@ export function UserMenu({
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
+  );
+}
+
+/**
+ * The plain initials button used by the shells that are not the full panel
+ * (gate pages and the signed-in `Shell`). The panel itself uses `UserMenu`
+ * above, which carries the same sign-out plus the account details.
+ */
+export function UserButton() {
+  const { signOut } = useAuth();
+  const user = readStoredUser();
+  const initials =
+    (user?.name ?? "User")
+      .split(" ")
+      .map((part: string) => part[0])
+      .filter(Boolean)
+      .slice(0, 2)
+      .join("")
+      .toUpperCase() || "A";
+
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        // The provider clears the session and navigates. Pages reload their own
+        // data on mount, so nothing from this account can leak to the next.
+        signOut();
+      }}
+      className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-primary text-xs font-semibold text-primary-foreground"
+      aria-label="Sign out"
+      title={
+        user?.email ? `${user.name ?? "User"} • ${user.email}` : "Sign out"
+      }
+    >
+      {initials}
+    </button>
   );
 }
 

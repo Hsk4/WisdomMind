@@ -5,60 +5,24 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { PasswordInput } from "@/components/ui/password-input";
-import { errorMessage } from "./api-client";
+import { apiBaseUrl, errorMessage } from "./api-client";
 import { useAuth } from "./auth-context";
 import { deviceLabel, getDeviceId, isNativeApp } from "./device";
 import { webHomeFor } from "./role-home";
-import { readStoredUser, type StoredUser } from "./session";
+import type { StoredUser } from "./session";
 
 /**
  * Local authentication: a bearer JWT in `localStorage`, the API as the only
  * authority on role and status, and the account's `home` deciding where it
  * lands. Nothing here trusts a stored role — the profile is always re-read
  * from `/me` after sign-in and on every panel load.
+ *
+ * This file holds the sign-in/sign-up forms. The session state those forms
+ * feed lives in `auth-context.tsx`, and the base URL they post to in
+ * `api-client.ts`.
  */
 
 export type { StoredUser } from "./session";
-
-export const DEV_API_URL = "http://localhost:4000/api/v1";
-
-export function apiBaseUrl() {
-  return process.env.NEXT_PUBLIC_API_URL || DEV_API_URL;
-}
-
-/** @deprecated Import from `@/lib/auth-context`. */
-export { AuthProvider, useAuth } from "./auth-context";
-
-export function UserButton() {
-  const { signOut } = useAuth();
-  const user = readStoredUser();
-  const initials =
-    (user?.name ?? "User")
-      .split(" ")
-      .map((part: string) => part[0])
-      .filter(Boolean)
-      .slice(0, 2)
-      .join("")
-      .toUpperCase() || "A";
-
-  return (
-    <button
-      type="button"
-      onClick={() => {
-        // The provider clears the session and navigates. Pages reload their own
-        // data on mount, so nothing from this account can leak to the next.
-        signOut();
-      }}
-      className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-primary text-xs font-semibold text-primary-foreground"
-      aria-label="Sign out"
-      title={
-        user?.email ? `${user.name ?? "User"} • ${user.email}` : "Sign out"
-      }
-    >
-      {initials}
-    </button>
-  );
-}
 
 type AuthPayload = {
   ok?: boolean;

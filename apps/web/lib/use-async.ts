@@ -3,8 +3,8 @@
 import { useCallback, useEffect, useState } from "react";
 
 /**
- * The two hooks every screen needs. This is deliberately the whole data layer:
- * a component either reads something (once, then on demand) or sends something.
+ * The data layer, and only this much of it: a component either reads
+ * something (once, then on demand) or sends something.
  *
  * No global cache, no stale time, no invalidation graph. When a mutation
  * changes what a screen shows, that screen calls its own `reload()` — the cost
@@ -96,8 +96,8 @@ export type ActionResult = {
 };
 
 /**
- * Send a request from a form. Replaces `useMutation` + `invalidateQueries`:
- * the form refreshes the list itself via the `reload()` the page passed in.
+ * Send a request from a form. There is no query cache to invalidate: the form
+ * refreshes the list itself via the `reload()` the page passed in.
  */
 export function useAction(onDone?: () => void): ActionResult {
   const [pending, setPending] = useState(false);

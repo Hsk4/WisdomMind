@@ -8,8 +8,8 @@ import { readToken } from "./session";
  *
  * Attaches the local session token as `Authorization: Bearer`, unwraps the
  * `{ ok, data }` / `{ ok: false, error }` envelope, and throws `ApiError` on a
- * failure so TanStack Query treats it as an error. The base URL is the API's
- * `/api/v1`; set it once from `NEXT_PUBLIC_API_URL`.
+ * failure. It also owns the base URL: every caller, including the auth form's
+ * raw `fetch`, reads it from here so one build variable changes every request.
  */
 
 const DEV_API_URL = "http://localhost:4000/api/v1";
@@ -61,6 +61,11 @@ export function notifyUnauthorized(reason = "session_expired") {
       notifying = false;
     }, 0);
   }
+}
+
+/** The API's `/api/v1` origin, from `NEXT_PUBLIC_API_URL` or the dev default. */
+export function apiBaseUrl(): string {
+  return BASE_URL;
 }
 
 export class ApiError extends Error {

@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { UserButton } from "@/lib/auth";
-import { BrandMark } from "@/components/brand/primitives";
+import { UserButton } from "@/components/shell/user-menu";
+import { BrandLogo } from "@/components/brand/wordmark";
 import { ThemeToggle } from "@/components/shell/page-actions";
 import { RoleChip, StatusChip } from "@/components/ui/nila";
 import { useSchoolName } from "@/lib/site-settings";
@@ -87,7 +87,7 @@ export function GateShell({
               href="/"
               className="flex items-center gap-2.5 rounded-lg focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-gold"
             >
-              <BrandMark size={30} tone="light" />
+              <BrandLogo size={96} className="rounded-md" />
               <span className="fastly-display text-[18px] text-white">
                 {schoolName}
               </span>

@@ -236,10 +236,9 @@ export interface PageActionsProps {
 }
 
 /**
- * The right-hand cluster of a panel header: theme, help, account and the local
- * `UserButton` (which is the real sign-out). Client component only because
- * the theme control needs `localStorage`; the user data is passed in from the
- * server layout.
+ * The right-hand cluster of a panel header: theme, help and the account menu
+ * (whose Sign out is the real one). Client component only because the theme
+ * control needs `localStorage`; the user data is passed in from the layout.
  */
 export function PageActions({
   user,

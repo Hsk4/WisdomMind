@@ -55,10 +55,14 @@ export function usePanelGuard(roles: UserRole[]) {
  */
 const PUBLIC_ENTRY_PAGES = ["/", "/mobile", "/sign-in", "/sign-up"];
 
+/**
+ * Matched exactly, not by prefix: `next.config.ts` builds with
+ * `trailingSlash: true`, so `usePathname()` reports `/sign-in/`, and a prefix
+ * test against `/` would call every route in the app a public entry page.
+ */
 function isPublicEntryPage(pathname: string) {
-  return PUBLIC_ENTRY_PAGES.some(
-    (page) => pathname === page || pathname.startsWith(`${page}/`),
-  );
+  const path = pathname !== "/" ? pathname.replace(/\/+$/, "") : pathname;
+  return PUBLIC_ENTRY_PAGES.includes(path);
 }
 
 /**
@@ -129,18 +133,4 @@ export function Guarded({
   return <>{children}</>;
 }
 
-/** For a page that only needs a signed-in visitor: sign in first. */
-export function useSignedInOnly() {
-  const { ready, signedIn, user, loading, error } = useAuth();
-  const router = useRouter();
 
-  useEffect(() => {
-    if (ready && !signedIn) router.replace("/sign-in");
-  }, [ready, signedIn, router]);
-
-  return {
-    user,
-    error,
-    isLoading: !ready || loading || (signedIn && !user && !error),
-  };
-}

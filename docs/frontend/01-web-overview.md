@@ -74,11 +74,12 @@ This is the folder to learn first.
 
 | File               | What it does                                              |
 | ------------------ | --------------------------------------------------------- |
-| `api-client.ts`    | The only way the app talks to the API                     |
+| `api-client.ts`    | The only way the app talks to the API; owns the base URL  |
 | `session.ts`       | Reads/writes the token in `localStorage`                  |
 | `auth-context.tsx` | `AuthProvider` + `useAuth()` — who is signed in           |
-| `use-async.ts`     | `useAsync`, `useApi`, `useAction` — the data layer        |
-| `guards.tsx`       | `usePanelGuard` — redirects a user out of the wrong panel |
+| `auth.tsx`         | The sign-in / sign-up forms                               |
+| `use-async.ts`     | `useAsync`, `useAction` — the data layer                  |
+| `guards.tsx`       | `usePanelGuard` / `usePublicPageRedirect` — where a user goes |
 | `school.ts`        | The school's name                                         |
 | `theme.ts`         | Light/dark handling                                       |
 
@@ -131,10 +132,11 @@ const decide = useAction(usersQuery.reload);
 </ActionButton>;
 ```
 
-> **Why no cache?** It was one (TanStack Query), and it caused a 401 storm: every
-> page mounted a guard, each fired `/me` with no token, and each 401 triggered a
-> redirect that remounted the tree. Now "which request runs when" is answerable
-> by reading the page.
+> **Why no cache?** There used to be one (TanStack Query), and it caused a 401
+> storm: every page mounted a guard, each fired `/me` with no token, and each
+> 401 triggered a redirect that remounted the tree. It has since been removed
+> from the codebase entirely. Now "which request runs when" is answerable by
+> reading the page.
 
 ---
 

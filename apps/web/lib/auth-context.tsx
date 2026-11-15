@@ -21,11 +21,7 @@ import {
 } from "./session";
 
 /**
- * The one place the app knows who is signed in.
- *
- * There is exactly one `/me` request per page load, it happens only when a
- * token exists, and its result lives here as plain React state. No cache, no
- * refetch policy, no invalidation — the provider is the state.
+ * The signed-in account, as the app sees it.
  *
  * Access is decided by the API: `user.home` and `user.role` come from `/me`, and
  * nothing here invents a role from localStorage. The stored profile is only a
@@ -54,6 +50,23 @@ export type AuthState = {
 };
 
 const AuthContext = createContext<AuthState | null>(null);
+
+/**
+ * Keep the stored first-paint hint in step with the API's answer.
+ *
+ * The hint holds no authority — `user.home` and `user.role` always come from
+ * `/me` — it only lets the shell paint before that request lands.
+ */
+function rememberUser(token: string, me: MeResponse) {
+  writeSession(token, {
+    id: me.id,
+    name: me.name,
+    email: me.email,
+    role: me.role,
+    status: me.status,
+    onboarded: me.onboarded,
+  });
+}
 
 /** The stored hint, in the shape `/me` returns, for the first paint. */
 function hintToMe(hint: StoredUser): MeResponse | null {
@@ -146,15 +159,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (cancelled) return;
         setSession({ token, me });
         setError(null);
-        // Keep the name/email hint in storage in step with the API.
-        writeSession(token, {
-          id: me.id,
-          name: me.name,
-          email: me.email,
-          role: me.role,
-          status: me.status,
-          onboarded: me.onboarded,
-        });
+        rememberUser(token, me);
       })
       .catch((caught: unknown) => {
         if (cancelled) return;
@@ -175,14 +180,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // the guards need it on the very next render.
       const me = await api.get<MeResponse>("/me");
       setSession({ token: nextToken, me });
-      writeSession(nextToken, {
-        id: me.id,
-        name: me.name,
-        email: me.email,
-        role: me.role,
-        status: me.status,
-        onboarded: me.onboarded,
-      });
+      rememberUser(nextToken, me);
       return me;
     },
     [],
@@ -212,9 +210,4 @@ export function useAuth(): AuthState {
   const context = useContext(AuthContext);
   if (!context) throw new Error("useAuth must be used inside <AuthProvider>");
   return context;
-}
-
-/** The stored hint, for places that render before `/me` settles. */
-export function useStoredUser(): StoredUser {
-  return readStoredUser();
 }
