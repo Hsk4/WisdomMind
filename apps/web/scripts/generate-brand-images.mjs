@@ -32,6 +32,9 @@ const brand = path.join(repoRoot, "brand-kit");
 const appDir = path.join(webRoot, "app");
 const publicBrand = path.join(webRoot, "public/brand/logo");
 
+/** The brand navy, used behind the maskable and adaptive layers. */
+const NAVY = "#0E2B52";
+
 const SOURCE_LOGO = path.join(repoRoot, "newlogo.jpg");
 const MARK = path.join(brand, "logo/wma-mark.svg");
 const LOCKUP = path.join(brand, "logo/wma-lockup.svg");
@@ -79,8 +82,11 @@ async function png(source, dest, width, height = width, options) {
  * MIND ACADEMY. Only the emblem goes in the tile: the wordmark is unreadable at
  * 16px, and the emblem is nearly square where the full page is 4:3. The page is
  * trimmed to its ink first, so the JPEG's own margins do not decide the scale.
+ *
+ * `background: false` leaves the tile transparent for Android's adaptive
+ * foreground, which the launcher draws over its own background layer.
  */
-async function makeIconMaster() {
+async function makeIconMaster({ background = true } = {}) {
   const inked = await sharp(
     await sharp(SOURCE_LOGO, { sequentialRead: true }).png().toBuffer(),
   )
@@ -119,9 +125,13 @@ async function makeIconMaster() {
       .toBuffer(),
   )
     .trim({ threshold: 12 })
-    .resize(940, 940, { fit: "inside" })
+    .resize(background ? 940 : 1024, background ? 940 : 1024, {
+      fit: "inside",
+    })
     .png()
     .toBuffer();
+
+  if (!background) return emblem;
 
   return sharp({
     create: { width: 1024, height: 1024, channels: 3, background: "#FFFFFF" },
@@ -192,9 +202,18 @@ async function main() {
   const iconMaster = await makeIconMaster();
   const iconAt = (size) =>
     sharp(iconMaster).resize(size, size, { kernel: "lanczos3" }).png();
-  const iconPng = async (dest, size) => {
+  /**
+   * `transparent` drops the white page and keeps the emblem's own alpha, which
+   * is what Android's adaptive foreground needs.
+   */
+  const iconPng = async (dest, size, { transparent = false } = {}) => {
     await fs.mkdir(path.dirname(dest), { recursive: true });
-    await iconAt(size).toFile(dest);
+    const image = transparent
+      ? sharp(await makeIconMaster({ background: false }))
+          .resize(size, size, { kernel: "lanczos3" })
+          .png()
+      : iconAt(size);
+    await image.png().toFile(dest);
     return `${path.relative(repoRoot, dest)} (${size}×${size})`;
   };
 
@@ -243,12 +262,32 @@ async function main() {
   written.push(
     await iconPng(path.join(brand, "capacitor-assets/icon-only.png"), 1024),
   );
+  /*
+   * Android's two adaptive layers are not two copies of the icon: the
+   * launcher stacks the foreground *on top of* the background, so a white
+   * square in either slot shows as a white square on the home screen. The
+   * background is the flat navy tile and the foreground is the artwork with
+   * no page behind it. `generate-android-icons.mjs` reads both.
+   */
   written.push(
-    await iconPng(path.join(brand, "capacitor-assets/icon-foreground.png"), 1024),
+    await iconPng(
+      path.join(brand, "capacitor-assets/icon-foreground.png"),
+      1024,
+      { transparent: true },
+    ),
   );
-  written.push(
-    await iconPng(path.join(brand, "capacitor-assets/icon-background.png"), 1024),
+  // The background layer is a flat fill: any artwork here would sit *under*
+  // the foreground's emblem and double it.
+  const backgroundLayer = path.join(
+    brand,
+    "capacitor-assets/icon-background.png",
   );
+  await sharp({
+    create: { width: 1024, height: 1024, channels: 4, background: NAVY },
+  })
+    .png()
+    .toFile(backgroundLayer);
+  written.push(path.relative(repoRoot, backgroundLayer) + " (flat " + NAVY + ")");
   written.push(
     await png(
       SPLASH,
